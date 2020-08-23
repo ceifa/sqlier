@@ -8,6 +8,15 @@ function context:where(field)
     return self
 end
 
+function context:whereOr(field)
+    self.CurrentWhere = table.insert(self.Where, {
+        Field = field,
+        Or = true
+    })
+
+    return self
+end
+
 function context:equal(value)
     context:__condition(sqlier.Where.Equal, value)
 
@@ -46,12 +55,6 @@ end
 
 function context:lessOrEqual(value)
     context:__condition(sqlier.Where.LessOrEqual, value)
-
-    return self
-end
-
-function context:column(column)
-    self.Where[self.CurrentWhere].Column = column
 
     return self
 end

@@ -11,31 +11,33 @@ end
 function context:select(...)
     local columns = {...}
 
-    if #columns > 0 then
+    if #columns == 0 then
+        self.Select = {"*"}
+    else
         self.Select = columns
     end
 
     return self
 end
 
-function context:insert(obj)
-    self.Insert = obj
-    return self
+function context:update()
 end
 
-function context:update(obj)
-    self.Update = obj
+function context:insert_update(obj)
+    self.Object = obj
+
     return self
 end
 
 function context:delete()
     self.Delete = true
+
     return self
 end
 
-function context:run()
-    if not self.Insert and not self.Update and not self.Delete then
-        self.Select = {"*"}
+function context:run(callback)
+    if not self.Delete and not self.Object then
+        self:select()
     end
 
     return self.Database:run(self, callback)

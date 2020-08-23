@@ -9,10 +9,10 @@ sqlier.Type.DateTime = "DATETIME"
 
 -- Where Types
 sqlier.Where = {}
-sqlier.Where.Equal = "EQUAL"
-sqlier.Where.NotEqual = "NOTEQUAL"
+sqlier.Where.Equal = "="
+sqlier.Where.NotEqual = "<>"
 sqlier.Where.Like = "LIKE"
-sqlier.Where.GreaterThan = "GREATERTHAN"
-sqlier.Where.LessThan = "LESSTHAN"
-sqlier.Where.GreaterOrEqual = "GREATEROREQUAL"
-sqlier.Where.LessOrEqual = "LESSOREQUAL"
+sqlier.Where.GreaterThan = ">"
+sqlier.Where.LessThan = "<"
+sqlier.Where.GreaterOrEqual = ">="
+sqlier.Where.LessOrEqual = "<="
