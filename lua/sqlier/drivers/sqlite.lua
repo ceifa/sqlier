@@ -48,7 +48,7 @@ function db:query(query, callback)
 end
 
 function db:get(table, identityKey, identity, callback)
-    local query = "SELECT * FROM `%s` WHERE %s = %s"
+    local query = "SELECT * FROM `%s` WHERE `%s` = %s"
     self:query(string.format(query, table, identityKey, sql.SQLStr(identity)), callback)
 end
 
@@ -80,15 +80,46 @@ function db:find(table, filter, callback)
     end)
 end
 
-function db:update(table, object)
+function db:update(table, identityKey, object)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if key == identityKey then
+            where = "`" .. key "` = " sql.SQLStr(value)
+        else
+            keyValues = keyValues .. "`" .. key .. "`" .. " = " .. sql.SQLStr(value)
+
+            if next(queryContext.Object, key) ~= nil then
+                keyValues = keyValues .. ", "
+            end
+        end
+    end
+
+    local query = "UPDATE `%s` SET %s WHERE %s"
+    self:query(string.format(query, table, keyValues, where))
 end
 
 function db:delete(table, identityKey, identity)
-    local query = "DELETE FROM `%s` WHERE %s = %s"
+    local query = "DELETE FROM `%s` WHERE `%s` = %s"
     self:query(string.format(query, table, identityKey, sql.SQLStr(identity)))
 end
 
-function db:insert(object)
+function db:insert(table, object)
+    local keys, values = "", ""
+
+    for key, value in pairs(object) do
+        keys = keys .. "`" .. key .. "`"
+        values = values .. sql.SQLStr(value)
+
+        if next(queryContext.Object, key) ~= nil then
+            keys = keys .. ", "
+            values = values .. ", "
+        end
+    end
+
+    local query = "INSERT INTO `%s`(%s) VALUES(%S)"
+    self:query(string.format(query, table, keys, values))
 end
 
 return db

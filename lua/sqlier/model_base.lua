@@ -27,6 +27,7 @@ function model_base:find(filter, callback)
 end
 
 function model_base:update(object)
+    self:database():insert(self.Table, self.Identity, object)
 end
 
 function model_base:delete(identity)
@@ -34,6 +35,7 @@ function model_base:delete(identity)
 end
 
 function model_base:insert(object)
+    self:database():insert(self.Table, object)
 end
 
 function model_base:database()
