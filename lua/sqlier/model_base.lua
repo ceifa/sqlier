@@ -1,5 +1,4 @@
-local ModelInstance = getmetatable("ModelInstance")
-
+local instance_base = require("sqlier/instance_base.lua")
 local model_base = {}
 model_base.__index = model_base
 
@@ -8,46 +7,41 @@ function model_base.Model(props)
 end
 
 function model_base:__call(props)
-    local instance = setmetatable(props, ModelInstance)
+    local instance = setmetatable(props, instance_base)
     instance = setmetatable(self.Table, instance)
-
-    function instance:model()
-        return self
-    end
+    instance.model = self
 
     return instance
 end
 
+function model_base:get(identity, callback)
+    self:database():get(self.Table, self.Identity, identity, callback)
+end
+
 function model_base:filter(filter, callback)
-    local context = self:context()
-
-    for key, value in pairs(filter) do
-        context = context:where(key):equal(value)
-    end
-
-    return context:run(callback)
+    self:database():get(self.Table, filter, callback)
 end
 
 function model_base:find(filter, callback)
-    local context = self:context()
+    self:database():get(self.Table, filter, callback)
+end
 
-    for key, value in pairs(filter) do
-        context = context:where(key):equal(value)
-    end
+function model_base:update(object)
+end
 
-    return context:limit(1):run(callback)
+function model_base:delete(identity)
+    self:database():delete(self.Table, self.Identity, identity)
+end
+
+function model_base:insert(object)
 end
 
 function model_base:database()
     return sqlier.Database[self.Database]
 end
 
-function model_base:context()
-    return sqlier.QueryContext(self:database(), self.Table)
-end
-
 function model_base:__validate()
-    self:database():validateSchema(self.Table, self.Columns)
+    self:database():validateSchema(self.Table, self.Columns, self.Identity)
 end
 
 return model_base

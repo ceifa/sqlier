@@ -7,12 +7,11 @@ function sqlier.Initialize(database, driver, options)
     db:initialize(options)
     db.Driver = driver
 
-    function db:context(table)
-        return sqlier.QueryContext(self, table)
-    end
-
     sqlier.Database[database] = db
 end
+
+require("sqlier/constants.lua")
+require("sqlier/model.lua")
 
 do
     local files, _ = file.Find("sqlier/database/*.json", "DATA")

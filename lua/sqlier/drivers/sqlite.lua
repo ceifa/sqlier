@@ -3,7 +3,7 @@ local db = {}
 function db:initialize()
 end
 
-function db:validateSchema(table, columns)
+function db:validateSchema(table, columns, identity)
     if sql.TableExists(table) then return end
     local query = "CREATE TABLE IF NOT EXISTS `" .. table .. "` ("
 
@@ -21,9 +21,7 @@ function db:validateSchema(table, columns)
 
         query = query .. type
 
-        if options.Unique then
-            query = query .. "  UNIQUE"
-        elseif options.PrimaryKey then
+        if name == identity then
             query = query .. " PRIMARY KEY"
         end
 
@@ -49,17 +47,22 @@ function db:query(query, callback)
     end
 end
 
-local function getWhereExpression(queryContext)
-    local query
+function db:get(table, identityKey, identity, callback)
+    local query = "SELECT * FROM `%s` WHERE %s = %s"
+    self:query(string.format(query, table, identityKey, sql.SQLStr(identity)), callback)
+end
 
-    for _, clause in ipairs(queryContext.Where) do
-        if not query then
-            query = "WHERE " .. clause.Field .. " " .. clause.Type .. " " .. sql.SQLStr(clause.Value)
-        else
-            if clause.Or then
-                query = query .. " OR " .. clause.Field .. " " .. clause.Type .. " " .. sql.SQLStr(clause.Value)
-            else
-                query = query .. " AND " .. clause.Field .. " " .. clause.Type .. " " .. sql.SQLStr(clause.Value)
+local function filterQuery(table, filter)
+    local query = "SELECT * FROM `" .. table .. "`"
+
+    if filter then
+        query = query .. " WHERE "
+
+        for key, value in pairs(filter) do
+            query = query .. "`" .. key .. "` = " .. sql.SQLStr(value)
+
+            if next(filter, key) ~= nil then
+                query = query .. " AND "
             end
         end
     end
@@ -67,53 +70,25 @@ local function getWhereExpression(queryContext)
     return query
 end
 
-function db:run(queryContext, callback)
-    local query
+function db:filter(table, filter, callback)
+    self:query(filterQuery(table, filter), callback)
+end
 
-    if queryContext.Select then
-        query = "SELECT " .. table.concat(queryContext.Select, ", ") .. " FROM `" .. queryContext.Table .. "`"
+function db:find(table, filter, callback)
+    self:query(filterQuery(table, filter) .. " LIMIT 1", function(res)
+        callback(res and res[1])
+    end)
+end
 
-        if queryContext.Where then
-            query = query .. " " .. getWhereQuery(queryContext.Where)
-        end
+function db:update(table, object)
+end
 
-        if queryContext.GroupBy then
-            query = query .. " GROUP BY " .. table.concat(queryContext.GroupBy, ", ")
-        end
+function db:delete(table, identityKey, identity)
+    local query = "DELETE FROM `%s` WHERE %s = %s"
+    self:query(string.format(query, table, identityKey, sql.SQLStr(identity)))
+end
 
-        if queryContext.OrderBy then
-            query = query .. " ORDER BY " .. queryContext.OrderBy.Field
-
-            if queryContext.OrderBy.Desc then
-                query = query .. " DESC"
-            end
-        end
-
-        if queryContext.Limit then
-            query = query .. " LIMIT " .. queryContext.Limit
-        end
-    elseif queryContext.Delete then
-        query = "DELETE FROM `" .. queryContext.Table .. "` " .. getWhereExpression(queryContext.Where)
-    elseif queryContext.Object then
-        local keys, values, keyValues = "", "", ""
-
-        for key, value in pairs(queryContext.Object) do
-            keys = keys .. "`" .. key
-            values = values .. sql.SQLStr(value)
-            keyValues = keyValues .. key .. " = " .. sql.SQLStr(value)
-
-            if next(queryContext.Object, key) ~= nil then
-                keys = keys .. ", "
-                values = values .. ", "
-                keyValues = keyValues .. ", "
-            end
-        end
-
-        query = "INSERT OR IGNORE INTO `" .. queryContext.Table .. "`(" .. keys .. ") VALUES (" .. values .. ");"
-        query = query .. "UPDATE `" .. queryContext.Table .. "` SET " .. keyValues
-    end
-
-    self:query(query, callback)
+function db:insert(object)
 end
 
 return db
