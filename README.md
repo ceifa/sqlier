@@ -1,2 +1,117 @@
-# sqlier
-Yet another gmod database abstraction
+The idea is to offer a way of writing one only code and be able to switch between multiple database drivers without problems.
+
+> Alert: This project not fill all the database cases and not aims to solve.
+
+## Usage
+
+### Setup a database
+
+Firstly you will need to setup your databases, you can do it in two ways.
+
+The first way is calling the initilizer function `sqlier.Initialize`, it accepts three arguments:
+
+1. Name, it's just a name to identify your database, it can be anything
+
+2. Driver, available options are: `sqlite`, `mysqloo`, `file`
+
+3. Options, the only one currently using it is the `mysqloo` driver, where you need to pass the database connection details
+
+```
+sqlier.Initialize("db1", "sqlite")
+```
+
+The second way is creating a json file inside the `data/sqlier/database` directory:
+
+* db2.json
+```json
+{
+    "driver": "mysqloo",
+    "address": "localhost",
+    "port": "3306",
+    "database": "GmodServer",
+    "user": "root",
+    "password": ""
+}
+```
+
+### Setup a model
+
+Now you will have to setup a model, it works like a class:
+
+```lua
+local User = sqlier.Model({
+    Table = "user",
+    Columns = {
+        Id = {
+            Type = sqlier.Type.Integer,
+            AutoIncrement = true
+        },
+        Name = {
+            Type = sqlier.Type.String
+        },
+        Rank = {
+            Type = sqlier.Type.String,
+            MaxLenght = 15
+        },
+        SteamId64 = {
+            Type = sqlier.Type.SteamId64
+        },
+        CreateDate = {
+            Type = sqlier.Type.Date
+        },
+        UpdateDate = {
+            Type = sqlier.Type.Date
+        }
+    },
+    Identity = "Id"
+})
+```
+
+The columns `CreatedDate` and `UpdateDate` are hard-coded internally populated automatically.
+
+Available data types are:
+
+```lua
+sqlier.Type.String
+sqlier.Type.Integer
+sqlier.Type.Float
+sqlier.Type.SteamId64
+sqlier.Type.Bool
+sqlier.Type.Date
+sqlier.Type.DateTime
+```
+
+### Instantiate, update and delete a model
+
+```lua
+local new_user = User({
+    Name = ply:Nick(),
+    SteamId = ply:SteamId64(),
+    Rank = "user"
+})
+new_user:save()
+
+new_user.Rank = "donator"
+new_user:save()
+
+new_user:delete()
+
+-- throw an error
+new_user:save()
+```
+
+### Querying
+
+```lua
+-- The fastest way, get by identity
+User:get(2, function(user)
+end)
+
+-- Find one by property filtering
+User:find({ Name = "ceifa" }, function(user)
+end)
+
+-- Get many by property filtering
+User:filter({ Rank = "donator" }, function(users)
+end)
+```
