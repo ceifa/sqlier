@@ -67,7 +67,7 @@ local User = sqlier.Model({
 })
 ```
 
-The columns `CreatedDate` and `UpdateDate` are hard-coded internally populated automatically.
+The columns `CreateDate` and `UpdateDate` are hard-coded internally populated automatically.
 
 Available data types are:
 
@@ -102,6 +102,8 @@ new_user:save()
 
 ### Querying
 
+We have some simple methods to do querying:
+
 ```lua
 -- The fastest way, get by identity
 User:get(2, function(user)
@@ -114,4 +116,16 @@ end)
 -- Get many by property filtering
 User:filter({ Rank = "donator" }, function(users)
 end)
+```
+
+But if you want more complex queries, you will have to do it yourself:
+
+```lua
+local user_db = User:database()
+if user_db.Driver == "sqlite" or user_db.Driver == "mysqloo" then
+    user_db:query("SELECT Name, COUNT(*) as Quantity FROM user GROUP BY Name", function(names)
+    end)
+else
+    error("Database driver not supported")
+end
 ```

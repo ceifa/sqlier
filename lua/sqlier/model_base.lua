@@ -8,7 +8,9 @@ end
 
 function model_base:__call(props)
     local instance = setmetatable(props, instance_base)
-    instance.model = self
+    instance.model = function()
+        return self
+    end
 
     return instance
 end
@@ -36,6 +38,10 @@ function model_base:find(filter, callback)
 end
 
 function model_base:update(object)
+    if self.Columns.UpdateDate then
+        object.UpdateDate = os.date("%Y-%m-%d")
+    end
+
     self:database():insert(self.Table, self.Identity, object)
 end
 
@@ -44,6 +50,10 @@ function model_base:delete(identity)
 end
 
 function model_base:insert(object)
+    if self.Columns.CreateDate then
+        object.CreateDate = os.date("%Y-%m-%d")
+    end
+
     self:database():insert(self.Table, self.Identity, object)
 end
 
