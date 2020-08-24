@@ -1,6 +1,6 @@
-The idea is to offer a way of writing one only code and be able to switch between multiple database drivers without problems.
+This project aims to offer a way of writing one only code and be able to switch between multiple database drivers without problems. The most easier and lightweight database abstraction of the market!
 
-> Alert: This project not fill all the database cases and not aims to solve.
+> Alert: This project will not fill all the database cases and not aims to fill.
 
 ## Usage
 
