@@ -39,7 +39,7 @@ function db:query(query, callback)
     local result = sql.Query(query)
 
     if result == false then
-        error("Error in query: " .. query .. " ~ Error: " .. sql.LastError())
+        ErrorNoHalt("Error in query: " .. query .. " ~ Error: " .. sql.LastError())
     end
 
     if callback then
@@ -48,8 +48,7 @@ function db:query(query, callback)
 end
 
 function db:get(table, identityKey, identity, callback)
-    local query = "SELECT * FROM `%s` WHERE `%s` = %s"
-    self:query(string.format(query, table, identityKey, sql.SQLStr(identity)), callback)
+    db:find(table, { [identityKey] = identity }, callback)
 end
 
 local function filterQuery(table, filter)
@@ -105,7 +104,7 @@ function db:delete(table, identityKey, identity)
     self:query(string.format(query, table, identityKey, sql.SQLStr(identity)))
 end
 
-function db:insert(table, object)
+function db:insert(table, identityKey, object)
     local keys, values = "", ""
 
     for key, value in pairs(object) do

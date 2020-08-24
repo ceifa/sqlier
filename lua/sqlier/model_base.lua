@@ -8,22 +8,31 @@ end
 
 function model_base:__call(props)
     local instance = setmetatable(props, instance_base)
-    instance = setmetatable(self.Table, instance)
     instance.model = self
 
     return instance
 end
 
 function model_base:get(identity, callback)
-    self:database():get(self.Table, self.Identity, identity, callback)
+    self:database():get(self.Table, self.Identity, identity, function(item)
+        callback(self(item))
+    end)
 end
 
 function model_base:filter(filter, callback)
-    self:database():get(self.Table, filter, callback)
+    self:database():filter(self.Table, filter, function(items)
+        for key, value in items do
+            items[key] = self(value)
+        end
+
+        callback(items)
+    end)
 end
 
 function model_base:find(filter, callback)
-    self:database():get(self.Table, filter, callback)
+    self:database():find(self.Table, filter, function(item)
+        callback(self(item))
+    end)
 end
 
 function model_base:update(object)
@@ -35,7 +44,7 @@ function model_base:delete(identity)
 end
 
 function model_base:insert(object)
-    self:database():insert(self.Table, object)
+    self:database():insert(self.Table, self.Identity, object)
 end
 
 function model_base:database()
