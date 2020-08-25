@@ -118,6 +118,16 @@ User:filter({ Rank = "donator" }, function(users)
 end)
 ```
 
+If you have support for `util.Promise`, you can use the async methods:
+
+```lua
+util.PromiseAsync(function()
+    local user = User:getAsync(2):Await()
+    local user = User:findAsync({ Name = "ceifa" }):Await()
+    local users = User:filterAsync({ Rank = "donator" }):Await()
+end)
+```
+
 But if you want more complex queries, you will have to do it yourself:
 
 ```lua
