@@ -70,7 +70,7 @@ function model_base:update(object)
         object.UpdateDate = os.date("%Y-%m-%d")
     end
 
-    self:database():insert(self.Table, self.Identity, object)
+    self:database():update(self.Table, self.Identity, object)
 end
 
 function model_base:delete(identity)

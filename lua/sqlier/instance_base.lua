@@ -5,7 +5,13 @@ function instance_base:save()
         error("Tried to update a deleted instance")
     end
 
-    self.model():update(self)
+    self.model():get(self[self.model.Identity], function(item)
+        if item then
+            self.model():update(self)
+        else
+            self.model():insert(self)
+        end
+    end)
 end
 
 function instance_base:delete()
