@@ -46,7 +46,6 @@ function db:validateSchema(schema)
 end
 
 function db:query(query, callback)
-    print(query)
     local result = sql.Query(query)
 
     if result == false then
@@ -90,7 +89,7 @@ function db:find(schema, filter, callback)
     end)
 end
 
-function db:update(schema, object)
+function db:update(schema, object, callback)
     local where
     local keyValues = ""
 
@@ -118,14 +117,22 @@ function db:update(schema, object)
 
     local query = "UPDATE `%s` SET %s WHERE %s"
     self:query(string.format(query, schema.Table, keyValues, where))
+
+    if isfunction(callback) then
+        callback()
+    end
 end
 
-function db:delete(schema, identity)
+function db:delete(schema, identity, callback)
     local query = "DELETE FROM `%s` WHERE `%s` = %s"
     self:query(string.format(query, schema.Table, schema.Identity, sql.SQLStr(identity)))
+
+    if isfunction(callback) then
+        callback(identity)
+    end
 end
 
-function db:insert(schema, object)
+function db:insert(schema, object, callback)
     local keys, values = "", ""
 
     for key, value in pairs(object) do
@@ -150,6 +157,10 @@ function db:insert(schema, object)
 
     local query = "INSERT INTO `%s`(%s) VALUES(%s)"
     self:query(string.format(query, schema.Table, keys, values))
+
+    if isfunction(callback) then
+        callback(sql.QueryValue("SELECT last_insert_rowid()"))
+    end
 end
 
 return db

@@ -138,6 +138,6 @@ end
 ```
 
 ### TODO
+* Add query logging
 * Support automatic UpdateDate
 * Support mysql
-* Add more callbacks

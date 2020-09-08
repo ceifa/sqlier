@@ -66,16 +66,16 @@ function model_base:filterAsync(filter, callback)
     end)
 end
 
-function model_base:update(object)
-    self:database():update(self, object)
+function model_base:update(object, callback)
+    self:database():update(self, object, callback)
 end
 
-function model_base:delete(identity)
-    self:database():delete(self,  identity)
+function model_base:delete(identity, callback)
+    self:database():delete(self,  identity, callback)
 end
 
-function model_base:insert(object)
-    self:database():insert(self, object)
+function model_base:insert(object, callback)
+    self:database():insert(self, object, callback)
 end
 
 function model_base:database()
