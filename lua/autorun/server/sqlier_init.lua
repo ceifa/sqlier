@@ -3,6 +3,7 @@ sqlier.Database = {}
 
 function sqlier.Initialize(database, driver, options)
     local db = require("sqlier/drivers/" .. driver .. ".lua")
+    db.__index = db
 
     db:initialize(options)
     db.Driver = driver
