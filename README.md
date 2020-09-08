@@ -58,16 +58,13 @@ local User = sqlier.Model({
         },
         CreateDate = {
             Type = sqlier.Type.Date
-        },
-        UpdateDate = {
-            Type = sqlier.Type.Date
         }
     },
     Identity = "Id"
 })
 ```
 
-The columns `CreateDate` and `UpdateDate` are hard-coded internally populated automatically.
+The column `CreateDate` are hard-coded internally populated automatically.
 
 Available data types are:
 
@@ -139,3 +136,8 @@ else
     error("Database driver not supported")
 end
 ```
+
+### TODO
+* Support automatic UpdateDate
+* Support mysql
+* Add more callbacks

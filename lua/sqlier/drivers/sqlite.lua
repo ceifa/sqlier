@@ -3,13 +3,13 @@ local db = {}
 function db:initialize()
 end
 
-function db:validateSchema(table, columns, identity)
-    if sql.TableExists(table) then return end
-    local query = "CREATE TABLE IF NOT EXISTS `" .. table .. "` ("
+function db:validateSchema(schema)
+    if sql.TableExists(schema.Table) then return end
+    local query = "CREATE TABLE IF NOT EXISTS `" .. schema.Table .. "` ("
 
-    for name, options in pairs(columns) do
+    for name, options in pairs(schema.Columns) do
         query = query .. "`" .. name .. "` "
-        type = options.Type
+        local type = options.Type
 
         if type == sqlier.StringType then
             if options.MaxLenght and isnumber(options.MaxLenght) then
@@ -21,7 +21,7 @@ function db:validateSchema(table, columns, identity)
 
         query = query .. type
 
-        if name == identity then
+        if name == schema.Identity then
             query = query .. " PRIMARY KEY"
         end
 
@@ -29,13 +29,24 @@ function db:validateSchema(table, columns, identity)
             query = query .. "AUTOINCREMENT"
         end
 
-        query = query .. ", "
+        if type == sqlier.Type.Date and name == "CreateDate" then
+            query = query .. " DEFAULT CURRENT_TIMESTAMP"
+        elseif options.Default ~= nil then
+            query = query .. " DEFAULT (" .. sql.SQLStr(options.Default, not isstring(options.Default)) .. ")"
+        end
+
+        if next(schema.Columns, name) == nil then
+            query = query .. ")"
+        else
+            query = query .. ", "
+        end
     end
 
     self:query(query)
 end
 
 function db:query(query, callback)
+    print(query)
     local result = sql.Query(query)
 
     if result == false then
@@ -47,8 +58,8 @@ function db:query(query, callback)
     end
 end
 
-function db:get(table, identityKey, identity, callback)
-    db:find(table, { [identityKey] = identity }, callback)
+function db:get(schema, identity, callback)
+    db:find(schema, { [schema.Identity] = identity }, callback)
 end
 
 local function filterQuery(table, filter)
@@ -69,56 +80,76 @@ local function filterQuery(table, filter)
     return query
 end
 
-function db:filter(table, filter, callback)
-    self:query(filterQuery(table, filter), callback)
+function db:filter(schema, filter, callback)
+    self:query(filterQuery(schema.Table, filter), callback)
 end
 
-function db:find(table, filter, callback)
-    self:query(filterQuery(table, filter) .. " LIMIT 1", function(res)
+function db:find(schema, filter, callback)
+    self:query(filterQuery(schema.Table, filter) .. " LIMIT 1", function(res)
         callback(res and res[1])
     end)
 end
 
-function db:update(table, identityKey, object)
+function db:update(schema, object)
     local where
     local keyValues = ""
 
     for key, value in pairs(object) do
-        if key == identityKey then
-            where = "`" .. key "` = " sql.SQLStr(value)
-        else
-            keyValues = keyValues .. "`" .. key .. "`" .. " = " .. sql.SQLStr(value)
+        -- TODO: can be optimized
+        local found = false
+        for ckey in pairs(schema.Columns) do
+            if string.lower(ckey) == string.lower(key) then
+                found = true
+            end
+        end
 
-            if next(queryContext.Object, key) ~= nil then
-                keyValues = keyValues .. ", "
+        if found then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = " .. sql.SQLStr(value)
+            else
+                keyValues = keyValues .. "`" .. key .. "`" .. " = " .. sql.SQLStr(value)
+
+                if next(object, key) ~= nil then
+                    keyValues = keyValues .. ", "
+                end
             end
         end
     end
 
     local query = "UPDATE `%s` SET %s WHERE %s"
-    self:query(string.format(query, table, keyValues, where))
+    self:query(string.format(query, schema.Table, keyValues, where))
 end
 
-function db:delete(table, identityKey, identity)
+function db:delete(schema, identity)
     local query = "DELETE FROM `%s` WHERE `%s` = %s"
-    self:query(string.format(query, table, identityKey, sql.SQLStr(identity)))
+    self:query(string.format(query, schema.Table, schema.Identity, sql.SQLStr(identity)))
 end
 
-function db:insert(table, identityKey, object)
+function db:insert(schema, object)
     local keys, values = "", ""
 
     for key, value in pairs(object) do
-        keys = keys .. "`" .. key .. "`"
-        values = values .. sql.SQLStr(value)
+        -- can be optimized
+        local found = false
+        for ckey in pairs(schema.Columns) do
+            if string.lower(ckey) == string.lower(key) then
+                found = true
+            end
+        end
 
-        if next(queryContext.Object, key) ~= nil then
-            keys = keys .. ", "
-            values = values .. ", "
+        if found then
+            keys = keys .. "`" .. key .. "`"
+            values = values .. sql.SQLStr(value)
+
+            if next(object, key) ~= nil then
+                keys = keys .. ", "
+                values = values .. ", "
+            end
         end
     end
 
-    local query = "INSERT INTO `%s`(%s) VALUES(%S)"
-    self:query(string.format(query, table, keys, values))
+    local query = "INSERT INTO `%s`(%s) VALUES(%s)"
+    self:query(string.format(query, schema.Table, keys, values))
 end
 
 return db

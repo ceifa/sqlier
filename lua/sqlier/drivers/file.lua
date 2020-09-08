@@ -12,34 +12,34 @@ function db:validateSchema(table, columns, identity)
     end
 end
 
-function db:get(table, identityKey, identity, callback)
+function db:get(schema, identity, callback)
     local content = file.Read("sqlier/" .. table .. "/" .. identity .. ".json")
     callback(content and util.JSONToTable(content))
 end
 
-function db:filter(table, filter, callback)
+function db:filter(schema, filter, callback)
     error("Filter not available on file system database driver")
 end
 
-function db:find(table, filter, callback)
+function db:find(schema, filter, callback)
     error("Find not available on file system database driver")
 end
 
-function db:update(table, identityKey, object)
-    self:get(table, identityKey, object[identityKey], function(res)
+function db:update(schema, object)
+    self:get(schema, object[identityKey], function(res)
         for key, value in pairs(object) do
             res[key] = value
         end
 
-        db:insert(table, identityKey, object)
+        db:insert(schema, object)
     end)
 end
 
-function db:delete(table, identityKey, identity)
+function db:delete(schema, identity)
     file.Delete("sqlier/" .. table .. "/" .. identity .. ".json")
 end
 
-function db:insert(table, identityKey, object)
+function db:insert(schema, object)
     file.Write("sqlier/" .. table .. "/" .. object[identityKey] .. ".json", util.TableToJSON(object))
 end
 

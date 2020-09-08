@@ -1,5 +1,6 @@
-local instance_base = require("sqlier/instance_base.lua")
+local instance_base = include("sqlier/instance_base.lua")
 local model_base = {}
+model_base.__index = model_base
 
 function model_base.Model(props)
     return setmetatable(props, model_base)
@@ -13,15 +14,15 @@ function model_base:__call(props)
 end
 
 function model_base:get(identity, callback)
-    self:database():get(self.Table, self.Identity, identity, function(item)
-        callback(self(item))
+    self:database():get(self, identity, function(item)
+        callback(item and self:__build(item) or nil)
     end)
 end
 
 function model_base:filter(filter, callback)
-    self:database():filter(self.Table, filter, function(items)
-        for key, value in items do
-            items[key] = self(value)
+    self:database():filter(self, filter, function(items)
+        for key, value in ipairs(items) do
+            items[key] = self:__build(value)
         end
 
         callback(items)
@@ -29,8 +30,8 @@ function model_base:filter(filter, callback)
 end
 
 function model_base:find(filter, callback)
-    self:database():find(self.Table, filter, function(item)
-        callback(self(item))
+    self:database():find(self, filter, function(item)
+        callback(self:__build(item))
     end)
 end
 
@@ -66,23 +67,15 @@ function model_base:filterAsync(filter, callback)
 end
 
 function model_base:update(object)
-    if self.Columns.UpdateDate then
-        object.UpdateDate = os.date("%Y-%m-%d")
-    end
-
-    self:database():update(self.Table, self.Identity, object)
+    self:database():update(self, object)
 end
 
 function model_base:delete(identity)
-    self:database():delete(self.Table, self.Identity, identity)
+    self:database():delete(self,  identity)
 end
 
 function model_base:insert(object)
-    if self.Columns.CreateDate then
-        object.CreateDate = os.date("%Y-%m-%d")
-    end
-
-    self:database():insert(self.Table, self.Identity, object)
+    self:database():insert(self, object)
 end
 
 function model_base:database()
@@ -90,7 +83,21 @@ function model_base:database()
 end
 
 function model_base:__validate()
-    self:database():validateSchema(self.Table, self.Columns, self.Identity)
+    self:database():validateSchema(self)
+end
+
+function model_base:__build(model)
+    for k, v in pairs(model) do
+        if self.Columns[k].Type == sqlier.Type.Integer or self.Columns[k].Type == sqlier.Type.Float then
+            model[k] = tonumber(v)
+        elseif self.Columns[k].Type == sqlier.Type.Bool then
+            model[k] = tobool(v)
+        elseif v == "NULL" then
+            model[k] = nil
+        end
+    end
+
+    return self(model)
 end
 
 return model_base

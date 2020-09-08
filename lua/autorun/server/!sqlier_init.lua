@@ -2,7 +2,7 @@ sqlier = {}
 sqlier.Database = {}
 
 function sqlier.Initialize(database, driver, options)
-    local db = require("sqlier/drivers/" .. driver .. ".lua")
+    local db = include("sqlier/drivers/" .. driver .. ".lua")
     db.__index = db
 
     db:initialize(options)
@@ -11,8 +11,8 @@ function sqlier.Initialize(database, driver, options)
     sqlier.Database[database] = db
 end
 
-require("sqlier/constants.lua")
-require("sqlier/model.lua")
+include("sqlier/constants.lua")
+include("sqlier/model.lua")
 
 do
     local files, _ = file.Find("sqlier/database/*.json", "DATA")
@@ -20,7 +20,7 @@ do
     for _, name in pairs(files) do
         local databaseConfigJson = file.Read("sqlier/database/" .. name)
         local databaseConfig = util.JSONToTable(databaseConfigJson)
-        local database = string.gsub(string.lower(name), ".lua", "")
+        local database = string.StripExtension(name)
 
         sqlier.Initialize(database, databaseConfig.driver, databaseConfig)
     end
