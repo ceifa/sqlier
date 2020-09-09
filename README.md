@@ -97,6 +97,19 @@ new_user:delete()
 new_user:save()
 ```
 
+If you want to know when a save or delete is done, you can pass a callback or use their async api, if suporting `util.Promise`:
+
+```lua
+new_user:save(function()
+    print("Save is done")
+end)
+
+util.PromiseAsync(function()
+    new_user:saveAsync():Await()
+    new_user:deleteAsync():Await()
+end)
+```
+
 ### Querying
 
 We have some simple methods to do querying:
@@ -136,6 +149,10 @@ else
     error("Database driver not supported")
 end
 ```
+
+### Logs
+
+To enable the querying logs, set the convar `sqlier_logs` to `1`. Error logs will always log at the console and to the `data/sqlier` folder, at the `errors.txt` file.
 
 ### TODO
 * Support mysql

@@ -55,14 +55,12 @@ function db:validateSchema(schema)
 end
 
 function db:query(query, callback)
-    if sqlier.ShouldLog:GetBool() then
-        print("[SQLITE] " .. query)
-    end
+    self:Log(query)
 
     local result = sql.Query(query)
 
     if result == false then
-        ErrorNoHalt("Error in query: " .. query .. " ~ Error: " .. sql.LastError())
+        self:LogError("Error in query: " .. query .. " ~ Error: " .. sql.LastError())
     end
 
     if callback then
@@ -106,16 +104,16 @@ function db:update(schema, object, callback)
     local where
     local keyValues = ""
 
-    for key, value in pairs(object) do
-        -- TODO: can be optimized
-        local found = false
-        for ckey in pairs(schema.Columns) do
-            if string.lower(ckey) == string.lower(key) then
-                found = true
-            end
-        end
+    if not schema.NormalizedColumnsCache then
+        schema.NormalizedColumnsCache = {}
 
-        if found then
+        for key in pairs(schema.Columns) do
+            schema.NormalizedColumnsCache[string.lower(key)] = true
+        end
+    end
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
             if key == schema.Identity then
                 where = "`" .. key .. "` = " .. sql.SQLStr(value)
             else

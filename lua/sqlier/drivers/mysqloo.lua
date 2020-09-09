@@ -3,25 +3,25 @@ local db = {}
 function db:initialize()
 end
 
-function db:validateSchema(table, columns, identity)
+function db:validateSchema(schema)
 end
 
-function db:get(table, identityKey, identity, callback)
+function db:get(schema, identity, callback)
 end
 
-function db:filter(table, filter, callback)
+function db:filter(schema, filter, callback)
 end
 
-function db:find(table, filter, callback)
+function db:find(schema, filter, callback)
 end
 
-function db:update(table, identityKey, object)
+function db:update(schema, object)
 end
 
-function db:delete(table, identityKey, identity)
+function db:delete(schema, identity)
 end
 
-function db:insert(table, identityKey, object)
+function db:insert(schema, object)
 end
 
 return db

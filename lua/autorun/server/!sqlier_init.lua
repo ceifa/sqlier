@@ -17,6 +17,19 @@ function Initialize(database, driver, options)
     local db = include("sqlier/drivers/" .. driver .. ".lua")
     db.__index = db
 
+    function db:Log(log)
+        if sqlier.ShouldLog:GetBool() then
+            print(string.format("[%s], %s", string.upper(driver), log))
+        end
+    end
+
+    function db:LogError(log)
+        log = string.format("[%s], %s", string.upper(driver), log)
+
+        ErrorNoHalt(log)
+        file.Write("sqlier/errors.txt", log)
+    end
+
     db:initialize(options)
     db.Driver = driver
 
@@ -33,6 +46,10 @@ function Model(props)
 end
 
 do
+    if not file.IsDir("sqlier", "DATA") then
+        file.CreateDir("sqlier")
+    end
+
     local files, _ = file.Find("sqlier/database/*.json", "DATA")
 
     for _, name in pairs(files) do

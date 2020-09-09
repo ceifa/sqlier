@@ -1,14 +1,11 @@
 local db = {}
 
 function db:initialize()
-    if not file.IsDir("sqlier", "DATA") then
-        file.CreateDir("sqlier")
-    end
 end
 
-function db:validateSchema(table, columns, identity)
-    if not file.IsDir("sqlier/" .. table, "DATA") then
-        file.CreateDir("sqlier/" .. table)
+function db:validateSchema(schema)
+    if not file.IsDir("sqlier/" .. schema.Table, "DATA") then
+        file.CreateDir("sqlier/" .. schema.Table)
     end
 end
 
@@ -25,22 +22,36 @@ function db:find(schema, filter, callback)
     error("Find not available on file system database driver")
 end
 
-function db:update(schema, object)
-    self:get(schema, object[identityKey], function(res)
+function db:update(schema, object, callback)
+    local identity = object[schema.Identity]
+    if not identity then
+        error("You should populate the identity to update using file system driver")
+    end
+
+    self:get(schema, identity, function(res)
         for key, value in pairs(object) do
             res[key] = value
         end
 
-        db:insert(schema, object)
+        db:insert(schema, object, function()
+            callback()
+        end)
     end)
 end
 
-function db:delete(schema, identity)
+function db:delete(schema, identity, callback)
     file.Delete("sqlier/" .. table .. "/" .. identity .. ".json")
+    callback()
 end
 
-function db:insert(schema, object)
-    file.Write("sqlier/" .. table .. "/" .. object[identityKey] .. ".json", util.TableToJSON(object))
+function db:insert(schema, object, callback)
+    local identity = object[schema.Identity]
+    if not identity then
+        error("You should populate the identity to insert using file system driver")
+    end
+
+    file.Write("sqlier/" .. table .. "/" .. identity .. ".json", util.TableToJSON(object))
+    callback(identity)
 end
 
 return db
