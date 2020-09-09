@@ -30,7 +30,7 @@ function db:validateSchema(schema)
         end
 
         if type == sqlier.Type.Date and name == "CreateDate" then
-            query = query .. " DEFAULT CURRENT_TIMESTAMP"
+            query = query .. " DEFAULT CURRENT_DATE"
         elseif options.Default ~= nil then
             query = query .. " DEFAULT (" .. sql.SQLStr(options.Default, not isstring(options.Default)) .. ")"
         end
@@ -43,9 +43,22 @@ function db:validateSchema(schema)
     end
 
     self:query(query)
+
+    if schema.Columns.UpdateDate then
+        sql.Query(string.format([[
+            CREATE TRIGGER `%s` AFTER UPDATE ON `%s`
+            BEGIN
+                UPDATE `%s` SET `UpdateDate` = CURRENT_DATE WHERE `%s` = NEW.%s;
+            END;
+        ]], schema.Table .. "_UpdateDate", schema.Table, schema.Table, schema.Identity, schema.Identity))
+    end
 end
 
 function db:query(query, callback)
+    if sqlier.ShouldLog:GetBool() then
+        print("[SQLITE] " .. query)
+    end
+
     local result = sql.Query(query)
 
     if result == false then

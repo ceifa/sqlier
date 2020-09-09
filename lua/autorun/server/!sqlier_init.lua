@@ -1,18 +1,36 @@
-sqlier = {}
-sqlier.Database = {}
+module("sqlier", package.seeall)
 
-function sqlier.Initialize(database, driver, options)
+Type = {}
+Type.String = "STRING"
+Type.Integer = "INTEGER"
+Type.Float = "FLOAT"
+Type.SteamId64 = "STEAMID64"
+Type.Bool = "BOOLEAN"
+Type.Date = "DATE"
+Type.DateTime = "DATETIME"
+
+ShouldLog = CreateConVar("sqlier_logs", 0, FCVAR_NONE, "Sqlier should log on console or not")
+
+Database = {}
+
+function Initialize(database, driver, options)
     local db = include("sqlier/drivers/" .. driver .. ".lua")
     db.__index = db
 
     db:initialize(options)
     db.Driver = driver
 
-    sqlier.Database[database] = db
+    Database[database] = db
 end
 
-include("sqlier/constants.lua")
-include("sqlier/model.lua")
+
+local model_base = include("sqlier/model_base.lua")
+
+function Model(props)
+    local model = model_base.Model(props)
+    model:__validate()
+    return model
+end
 
 do
     local files, _ = file.Find("sqlier/database/*.json", "DATA")
@@ -22,6 +40,6 @@ do
         local databaseConfig = util.JSONToTable(databaseConfigJson)
         local database = string.StripExtension(name)
 
-        sqlier.Initialize(database, databaseConfig.driver, databaseConfig)
+        Initialize(database, databaseConfig.driver, databaseConfig)
     end
 end

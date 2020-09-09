@@ -1,9 +1,0 @@
--- Data Types
-sqlier.Type = {}
-sqlier.Type.String = "STRING"
-sqlier.Type.Integer = "INTEGER"
-sqlier.Type.Float = "FLOAT"
-sqlier.Type.SteamId64 = "STEAMID64"
-sqlier.Type.Bool = "BOOLEAN"
-sqlier.Type.Date = "DATE"
-sqlier.Type.DateTime = "DATETIME"

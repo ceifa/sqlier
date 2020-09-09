@@ -64,7 +64,7 @@ local User = sqlier.Model({
 })
 ```
 
-The column `CreateDate` are hard-coded internally populated automatically.
+The columns `CreateDate` and `UpdateDate` are hard-coded internally populated automatically.
 
 Available data types are:
 
@@ -138,6 +138,4 @@ end
 ```
 
 ### TODO
-* Add query logging
-* Support automatic UpdateDate
 * Support mysql
