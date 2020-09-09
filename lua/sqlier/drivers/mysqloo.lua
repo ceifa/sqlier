@@ -1,6 +1,17 @@
 local db = {}
 
-function db:initialize()
+function db:initialize(options)
+    connection = mysqloo.connect(options.address, options.user, options.password, options.database, options.port)
+
+    function connection:onConnected()
+        self:Log("Connected!")
+    end
+
+    function connection:onConnectionFailed(err)
+        self:LogError("Connection Failed, please check your settings: ", err)
+    end
+
+    connection:connect()
 end
 
 function db:validateSchema(schema)

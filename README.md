@@ -1,6 +1,6 @@
-This project aims to offer a way of writing one only code and be able to switch between multiple database drivers without problems. The most easier and lightweight database abstraction of the market!
+Are you tired of these lots of heavy database libraries which do a lot of things which you don't need? You came at the right place! This project aims to offer a way of writing a very simple code only one time and be able to switch between multiple database drivers without problems. The most easier and lightweight database abstraction of the market!
 
-> Alert: This project will not fill all the database cases and not aims to fill.
+> Alert: This project will not fill all the database edge cases and not aims to fill.
 
 ## Usage
 
@@ -78,7 +78,7 @@ sqlier.Type.Date
 sqlier.Type.DateTime
 ```
 
-### Instantiate, update and delete a model
+### Instantiate, update or delete a model
 
 ```lua
 local new_user = User({
