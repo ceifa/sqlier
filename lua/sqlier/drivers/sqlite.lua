@@ -4,7 +4,14 @@ function db:initialize()
 end
 
 function db:validateSchema(schema)
+    schema.NormalizedColumnsCache = {}
+
+    for key in pairs(schema.Columns) do
+        schema.NormalizedColumnsCache[string.lower(key)] = true
+    end
+
     if sql.TableExists(schema.Table) then return end
+
     local query = "CREATE TABLE IF NOT EXISTS `" .. schema.Table .. "` ("
 
     for name, options in pairs(schema.Columns) do
@@ -104,14 +111,6 @@ function db:update(schema, object, callback)
     local where
     local keyValues = ""
 
-    if not schema.NormalizedColumnsCache then
-        schema.NormalizedColumnsCache = {}
-
-        for key in pairs(schema.Columns) do
-            schema.NormalizedColumnsCache[string.lower(key)] = true
-        end
-    end
-
     for key, value in pairs(object) do
         if schema.NormalizedColumnsCache[string.lower(key)] then
             if key == schema.Identity then
@@ -147,15 +146,7 @@ function db:insert(schema, object, callback)
     local keys, values = "", ""
 
     for key, value in pairs(object) do
-        -- can be optimized
-        local found = false
-        for ckey in pairs(schema.Columns) do
-            if string.lower(ckey) == string.lower(key) then
-                found = true
-            end
-        end
-
-        if found then
+        if schema.NormalizedColumnsCache[string.lower(key)] then
             keys = keys .. "`" .. key .. "`"
             values = values .. sql.SQLStr(value)
 
