@@ -8,6 +8,7 @@ Type.SteamId64 = "STEAMID64"
 Type.Bool = "BOOLEAN"
 Type.Date = "DATE"
 Type.DateTime = "DATETIME"
+Type.Timestamp = "TIMESTAMP"
 
 ShouldLog = CreateConVar("sqlier_logs", 0, FCVAR_NONE, "Sqlier should log on console or not")
 
@@ -19,15 +20,15 @@ function Initialize(database, driver, options)
 
     function db:Log(log)
         if sqlier.ShouldLog:GetBool() then
-            print(string.format("[%s], %s", string.upper(driver), log))
+            print(string.format("[%s] %s", string.upper(driver), log))
         end
     end
 
     function db:LogError(log)
-        log = string.format("[%s], %s", string.upper(driver), log)
+        log = string.format("[%s] %s", string.upper(driver), log)
 
         ErrorNoHalt(log)
-        file.Write("sqlier/errors.txt", log)
+        file.Append("sqlier/errors.txt", log)
     end
 
     db:initialize(options)

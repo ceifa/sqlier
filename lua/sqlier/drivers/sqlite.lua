@@ -11,11 +11,11 @@ function db:validateSchema(schema)
         query = query .. "`" .. name .. "` "
         local type = options.Type
 
-        if type == sqlier.StringType then
-            if options.MaxLenght and isnumber(options.MaxLenght) then
+        if type == sqlier.Type.String then
+            if options.MaxLenght then
                 type = "VARCHAR(" .. tostring(options.MaxLenght) .. ")"
             end
-        elseif type == sqlier.SteamIdType then
+        elseif type == sqlier.Type.SteamId64 then
             type = "BIGINT"
         end
 
@@ -29,8 +29,8 @@ function db:validateSchema(schema)
             query = query .. "AUTOINCREMENT"
         end
 
-        if type == sqlier.Type.Date and name == "CreateDate" then
-            query = query .. " DEFAULT CURRENT_DATE"
+        if type == sqlier.Type.Date and name == "CreateTimestamp" then
+            query = query .. " DEFAULT CURRENT_TIMESTAMP"
         elseif options.Default ~= nil then
             query = query .. " DEFAULT (" .. sql.SQLStr(options.Default, not isstring(options.Default)) .. ")"
         end
@@ -44,13 +44,13 @@ function db:validateSchema(schema)
 
     self:query(query)
 
-    if schema.Columns.UpdateDate then
+    if schema.Columns.UpdateTimestamp then
         sql.Query(string.format([[
             CREATE TRIGGER `%s` AFTER UPDATE ON `%s`
             BEGIN
-                UPDATE `%s` SET `UpdateDate` = CURRENT_DATE WHERE `%s` = NEW.%s;
+                UPDATE `%s` SET `UpdateTimestamp` = CURRENT_TIMESTAMP WHERE `%s` = NEW.%s;
             END;
-        ]], schema.Table .. "_UpdateDate", schema.Table, schema.Table, schema.Identity, schema.Identity))
+        ]], schema.Table .. "_UpdateTimestamp", schema.Table, schema.Table, schema.Identity, schema.Identity))
     end
 end
 

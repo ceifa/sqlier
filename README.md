@@ -56,15 +56,15 @@ local User = sqlier.Model({
         SteamId64 = {
             Type = sqlier.Type.SteamId64
         },
-        CreateDate = {
-            Type = sqlier.Type.Date
+        CreateTimestamp = {
+            Type = sqlier.Type.Timestamp
         }
     },
     Identity = "Id"
 })
 ```
 
-The columns `CreateDate` and `UpdateDate` are hard-coded internally populated automatically.
+The columns `CreateTimestamp` and `UpdateTimestamp` are hard-coded internally populated automatically.
 
 Available data types are:
 
@@ -76,6 +76,7 @@ sqlier.Type.SteamId64
 sqlier.Type.Bool
 sqlier.Type.Date
 sqlier.Type.DateTime
+sqlier.Type.Timestamp
 ```
 
 ### Instantiate, update or delete a model
