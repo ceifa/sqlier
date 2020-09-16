@@ -154,6 +154,3 @@ end
 ### Logs
 
 To enable the querying logs, set the convar `sqlier_logs` to `1`. Error logs will always log at the console and to the `data/sqlier` folder, at the `errors.txt` file.
-
-### TODO
-* Support mysql

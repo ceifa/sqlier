@@ -36,7 +36,7 @@ function db:validateSchema(schema)
             query = query .. "AUTOINCREMENT"
         end
 
-        if type == sqlier.Type.Date and name == "CreateTimestamp" then
+        if type == sqlier.Type.Timestamp and name == "CreateTimestamp" then
             query = query .. " DEFAULT CURRENT_TIMESTAMP"
         elseif options.Default ~= nil then
             query = query .. " DEFAULT (" .. sql.SQLStr(options.Default, not isstring(options.Default)) .. ")"
@@ -51,7 +51,7 @@ function db:validateSchema(schema)
 
     self:query(query)
 
-    if schema.Columns.UpdateTimestamp then
+    if schema.Columns.UpdateTimestamp and schema.Columns.UpdateTimestamp.Type == sqlier.Type.Timestamp then
         sql.Query(string.format([[
             CREATE TRIGGER `%s` AFTER UPDATE ON `%s`
             BEGIN

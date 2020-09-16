@@ -1,6 +1,8 @@
 local db = {}
 local connection
 
+require("mysqloo")
+
 function db:initialize(options)
     connection = mysqloo.connect(options.address, options.user, options.password, options.database, options.port)
 
@@ -16,6 +18,12 @@ function db:initialize(options)
 end
 
 function db:validateSchema(schema)
+    schema.NormalizedColumnsCache = {}
+
+    for key in pairs(schema.Columns) do
+        schema.NormalizedColumnsCache[string.lower(key)] = true
+    end
+
     local query = "CREATE TABLE IF NOT EXISTS `" .. schema.Table .. "` ("
 
     for name, options in pairs(schema.Columns) do
@@ -38,9 +46,9 @@ function db:validateSchema(schema)
             query = query .. "AUTOINCREMENT"
         end
 
-        if type == sqlier.Type.Date and name == "CreateTimestamp" then
+        if type == sqlier.Type.Timestamp and name == "CreateTimestamp" then
             query = query .. " DEFAULT CURRENT_TIMESTAMP"
-        elseif type == sqlier.Type.Date and name == "UpdateTimestamp" then
+        elseif type == sqlier.Type.Timestamp and name == "UpdateTimestamp" then
             query = query .. " DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
         elseif options.Default ~= nil then
             query = query .. " DEFAULT (" .. sql.SQLStr(options.Default, not isstring(options.Default)) .. ")"
@@ -76,7 +84,9 @@ function db:query(query, callback)
 
             if connection:status() ~= mysqloo.DATABASE_CONNECTED then
                 self:LogError("Re-connection to database server failed.")
-                callback(false)
+                if callback then
+                    callback(false)
+                end
 
                 return
             end
@@ -91,24 +101,98 @@ function db:query(query, callback)
     end
 
     q:start()
+
+    return q
 end
 
 function db:get(schema, identity, callback)
+    db:find(schema, { [schema.Identity] = identity }, callback)
+end
+
+local function filterQuery(table, filter)
+    local query = "SELECT * FROM `" .. table .. "`"
+
+    if filter then
+        query = query .. " WHERE "
+
+        for key, value in pairs(filter) do
+            query = query .. "`" .. key .. "` = '" .. connection:escape(value) .. "'"
+
+            if next(filter, key) ~= nil then
+                query = query .. " AND "
+            end
+        end
+    end
+
+    return query
 end
 
 function db:filter(schema, filter, callback)
+    self:query(filterQuery(schema.Table, filter), callback)
 end
 
 function db:find(schema, filter, callback)
+    self:query(filterQuery(schema.Table, filter) .. " LIMIT 1", function(res)
+        callback(res and res[1])
+    end)
 end
 
 function db:update(schema, object)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = '" .. connection:escape(value) .. "'"
+            else
+                keyValues = keyValues .. "`" .. key .. "`" .. " = '" .. connection:escape(value) .. "'"
+
+                if next(object, key) ~= nil then
+                    keyValues = keyValues .. ", "
+                end
+            end
+        end
+    end
+
+    local query = "UPDATE `%s` SET %s WHERE %s"
+    self:query(string.format(query, schema.Table, keyValues, where))
+
+    if isfunction(callback) then
+        callback()
+    end
 end
 
 function db:delete(schema, identity)
+    local query = "DELETE FROM `%s` WHERE `%s` = '%s'"
+    self:query(string.format(query, schema.Table, schema.Identity, connection:escape(identity)))
+
+    if isfunction(callback) then
+        callback(identity)
+    end
 end
 
 function db:insert(schema, object)
+    local keys, values = "", ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            keys = keys .. "`" .. key .. "`"
+            values = values .. "'" .. connection:escape(value) .. "'"
+
+            if next(object, key) ~= nil then
+                keys = keys .. ", "
+                values = values .. ", "
+            end
+        end
+    end
+
+    local query = "INSERT INTO `%s`(%s) VALUES(%s)"
+    local q = self:query(string.format(query, schema.Table, keys, values))
+
+    if isfunction(callback) then
+        callback(q:lastInsert())
+    end
 end
 
 return db

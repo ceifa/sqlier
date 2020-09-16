@@ -6,7 +6,7 @@ function instance_base:save(callback)
         error("Tried to update a deleted instance")
     end
 
-    if self.CreateDate then
+    if self.CreateTimestamp then
         self.model():update(self, callback)
     else
         local identity = self[self.model().Identity]
