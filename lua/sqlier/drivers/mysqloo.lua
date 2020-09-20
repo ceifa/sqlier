@@ -31,7 +31,11 @@ function db:validateSchema(schema)
         local type = options.Type
 
         if type == sqlier.Type.String then
-            type = "VARCHAR(" .. (options.MaxLenght and tostring(options.MaxLenght) or "65535") .. ")"
+            if options.MaxLenght then
+                type = "VARCHAR(" .. tostring(math.min(16383, options.MaxLenght)) .. ")"
+            else
+                type = "TEXT"
+            end
         elseif type == sqlier.Type.SteamId64 then
             type = "BIGINT"
         end
@@ -43,7 +47,7 @@ function db:validateSchema(schema)
         end
 
         if options.AutoIncrement then
-            query = query .. "AUTOINCREMENT"
+            query = query .. " AUTO_INCREMENT"
         end
 
         if type == sqlier.Type.Timestamp and name == "CreateTimestamp" then
