@@ -87,6 +87,10 @@ function model_base:__validate()
 end
 
 function model_base:__build(model)
+    if not istable(model) then
+        return nil
+    end
+
     for k, v in pairs(model) do
         if self.Columns[k].Type == sqlier.Type.Integer or self.Columns[k].Type == sqlier.Type.Float then
             model[k] = tonumber(v)
