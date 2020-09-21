@@ -39,7 +39,7 @@ function db:validateSchema(schema)
         if type == sqlier.Type.Timestamp and name == "CreateTimestamp" then
             query = query .. " DEFAULT CURRENT_TIMESTAMP"
         elseif options.Default ~= nil then
-            query = query .. " DEFAULT (" .. options.Default .. ")"
+            query = query .. " DEFAULT (" .. sql.SQLStr(options.Default, not isstring(options.Default)) .. ")"
         end
 
         if next(schema.Columns, name) == nil then

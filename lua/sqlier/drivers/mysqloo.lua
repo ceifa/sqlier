@@ -55,7 +55,7 @@ function db:validateSchema(schema)
         elseif type == sqlier.Type.Timestamp and name == "UpdateTimestamp" then
             query = query .. " DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
         elseif options.Default ~= nil then
-            query = query .. " DEFAULT (" .. options.Default .. ")"
+            query = query .. " DEFAULT (" .. sql.SQLStr(options.Default, not isstring(options.Default)) .. ")"
         end
 
         if next(schema.Columns, name) == nil then
