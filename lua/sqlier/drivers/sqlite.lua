@@ -23,7 +23,7 @@ function db:validateSchema(schema)
                 type = "VARCHAR(" .. tostring(options.MaxLenght) .. ")"
             end
         elseif type == sqlier.Type.SteamId64 then
-            type = "BIGINT"
+            type = "CHAR(17)"
         end
 
         query = query .. type
