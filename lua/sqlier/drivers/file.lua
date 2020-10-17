@@ -9,8 +9,14 @@ function db:validateSchema(schema)
     end
 end
 
+local function escapeIdentity(identity)
+    return identity:gsub("([^%w ])", function(c)
+        return string.format("%%%02X", string.byte(c))
+    end)
+end
+
 function db:get(schema, identity, callback)
-    local content = file.Read("sqlier/" .. table .. "/" .. identity .. ".json")
+    local content = file.Read("sqlier/" .. table .. "/" .. escapeIdentity(identity) .. ".json")
     callback(content and util.JSONToTable(content))
 end
 
@@ -24,6 +30,7 @@ end
 
 function db:update(schema, object, callback)
     local identity = object[schema.Identity]
+
     if not identity then
         error("You should populate the identity to update using file system driver")
     end
@@ -40,17 +47,18 @@ function db:update(schema, object, callback)
 end
 
 function db:delete(schema, identity, callback)
-    file.Delete("sqlier/" .. table .. "/" .. identity .. ".json")
+    file.Delete("sqlier/" .. table .. "/" .. escapeIdentity(identity) .. ".json")
     callback()
 end
 
 function db:insert(schema, object, callback)
     local identity = object[schema.Identity]
+
     if not identity then
         error("You should populate the identity to insert using file system driver")
     end
 
-    file.Write("sqlier/" .. table .. "/" .. identity .. ".json", util.TableToJSON(object))
+    file.Write("sqlier/" .. table .. "/" .. escapeIdentity(identity) .. ".json", util.TableToJSON(object))
     callback(identity)
 end
 
