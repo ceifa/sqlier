@@ -79,7 +79,15 @@ function model_base:insert(object, callback)
 end
 
 function model_base:database()
-    return sqlier.Database[self.Database]
+    local db = sqlier.Database[self.Database]
+
+    if not db then
+        error(string.format(
+            "Could not find a database with key '%s', you forgot to register it?",
+            self.Database))
+    end
+
+    return db
 end
 
 function model_base:__validate()
