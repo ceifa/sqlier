@@ -10,7 +10,8 @@ Type.Date = "DATE"
 Type.DateTime = "DATETIME"
 Type.Timestamp = "TIMESTAMP"
 
-ShouldLog = CreateConVar("sqlier_logs", 0, FCVAR_NONE, "Sqlier should log on console or not")
+-- 0 to disable, 1 for errors only, 2 for debug, 3 for traces
+LogSeverity = CreateConVar("sqlier_logs", 1, FCVAR_NONE, "<0/1/2/3> - Logs severity", 0, 3)
 
 Database = {}
 
@@ -18,17 +19,29 @@ function Initialize(database, driver, options)
     local db = include("sqlier/drivers/" .. driver .. ".lua")
     db.__index = db
 
-    function db:Log(log)
-        if sqlier.ShouldLog:GetBool() then
-            print(string.format("[%s] %s", string.upper(driver), log))
+    function db:Log(log, isError)
+        local enabledSeverity = sqlier.LogSeverity:GetInt()
+
+        if enabledSeverity > 0 and (isError or enabledSeverity > 1) then
+            log = string.format("[%s] %s", string.upper(driver), log)
+
+            if enabledSeverity == 3 then
+                local trace = debug.traceback()
+                log = trace .. "\n" .. log
+            end
+
+            if isError then
+                file.Append("sqlier/errors.txt", log)
+            end
+
+            if hook.Run("SqlierLog", log, isError, enabledSeverity) ~= false then
+                print(log)
+            end
         end
     end
 
     function db:LogError(log)
-        log = string.format("[%s] %s", string.upper(driver), log)
-
-        ErrorNoHalt(log)
-        file.Append("sqlier/errors.txt", log)
+        self:Log(log, true)
     end
 
     db:initialize(options)
