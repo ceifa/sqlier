@@ -1,5 +1,5 @@
 local db = {}
-local connection
+local connection, dataflow
 
 require("mysqloo")
 
@@ -15,6 +15,15 @@ function db:initialize(options)
     end
 
     connection:connect()
+
+    dataflow = include("sqlier/drivers/helpers/dataflow.lua")
+    dataflow:action(function(query, callback)
+        self:query(query, callback)
+    end)
+
+    if options.queue == true then
+        dataflow:degreeOfParallelism(1)
+    end
 end
 
 function db:validateSchema(schema)
@@ -65,7 +74,7 @@ function db:validateSchema(schema)
         end
     end
 
-    self:query(query)
+    dataflow:enqueue(query)
 end
 
 function db:query(query, callback)
@@ -132,11 +141,11 @@ local function filterQuery(table, filter)
 end
 
 function db:filter(schema, filter, callback)
-    self:query(filterQuery(schema.Table, filter), callback)
+    dataflow:enqueue(filterQuery(schema.Table, filter), callback)
 end
 
 function db:find(schema, filter, callback)
-    self:query(filterQuery(schema.Table, filter) .. " LIMIT 1", function(res)
+    dataflow:enqueue(filterQuery(schema.Table, filter) .. " LIMIT 1", function(res)
         callback(res and res[1])
     end)
 end
@@ -160,7 +169,7 @@ function db:update(schema, object)
     end
 
     local query = "UPDATE `%s` SET %s WHERE %s"
-    self:query(string.format(query, schema.Table, keyValues, where))
+    dataflow:enqueue(string.format(query, schema.Table, keyValues, where))
 
     if isfunction(callback) then
         callback()
@@ -169,7 +178,7 @@ end
 
 function db:delete(schema, identity)
     local query = "DELETE FROM `%s` WHERE `%s` = '%s'"
-    self:query(string.format(query, schema.Table, schema.Identity, connection:escape(identity)))
+    dataflow:enqueue(string.format(query, schema.Table, schema.Identity, connection:escape(identity)))
 
     if isfunction(callback) then
         callback(identity)
@@ -192,7 +201,7 @@ function db:insert(schema, object)
     end
 
     local query = "INSERT INTO `%s`(%s) VALUES(%s)"
-    local q = self:query(string.format(query, schema.Table, keys, values))
+    local q = dataflow:enqueue(string.format(query, schema.Table, keys, values))
 
     if isfunction(callback) then
         callback(q:lastInsert())
