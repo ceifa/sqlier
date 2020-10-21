@@ -16,7 +16,7 @@ local function escapeIdentity(identity)
 end
 
 function db:get(schema, identity, callback)
-    local content = file.Read("sqlier/" .. table .. "/" .. escapeIdentity(identity) .. ".json")
+    local content = file.Read("sqlier/" .. schema.Table .. "/" .. escapeIdentity(identity) .. ".json")
     callback(content and util.JSONToTable(content))
 end
 
@@ -47,7 +47,7 @@ function db:update(schema, object, callback)
 end
 
 function db:delete(schema, identity, callback)
-    file.Delete("sqlier/" .. table .. "/" .. escapeIdentity(identity) .. ".json")
+    file.Delete("sqlier/" .. schema.Table .. "/" .. escapeIdentity(identity) .. ".json")
     callback()
 end
 
@@ -58,7 +58,7 @@ function db:insert(schema, object, callback)
         error("You should populate the identity to insert using file system driver")
     end
 
-    file.Write("sqlier/" .. table .. "/" .. escapeIdentity(identity) .. ".json", util.TableToJSON(object))
+    file.Write("sqlier/" .. schema.Table .. "/" .. escapeIdentity(identity) .. ".json", util.TableToJSON(object))
     callback(identity)
 end
 
