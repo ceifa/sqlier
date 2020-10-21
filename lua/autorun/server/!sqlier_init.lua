@@ -26,8 +26,7 @@ function Initialize(database, driver, options)
             log = string.format("[%s] %s", string.upper(driver), log)
 
             if enabledSeverity == 3 then
-                local trace = debug.traceback()
-                log = trace .. "\n" .. log
+                log = log .. "\n" .. debug.traceback()
             end
 
             if isError then

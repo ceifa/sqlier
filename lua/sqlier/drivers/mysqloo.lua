@@ -69,7 +69,7 @@ function db:validateSchema(schema)
 end
 
 function db:query(query, callback)
-    self:Log(query)
+    self:Log("Querying: '" .. query .. "'")
 
     local q = connection:query(query)
 
@@ -96,7 +96,7 @@ function db:query(query, callback)
             end
         end
 
-        self:LogError("Query Failed: " .. err .. "(" .. usedQuery .. ")\n")
+        self:LogError("Query Failed: " .. err .. "(" .. usedQuery .. ")")
 
         if tries < 3 then
             tries = tries + 1
