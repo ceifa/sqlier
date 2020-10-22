@@ -1,29 +1,28 @@
 local db = {}
-local source, cache
 
 function db:initialize(options)
-    source = sqlier.Database[options.source]
-    cache = sqlier.Database[options.cache]
+    self.Source = sqlier.Database[options.source]
+    self.Cache = sqlier.Database[options.cache]
 
-    if not source or not cache then
+    if not self.Source or not self.Cache then
         db:LogError("Source or cache database was not previously registered")
     end
 end
 
 function db:validateSchema(schema)
-    source:validateSchema(schema)
-    cache:validateSchema(schema)
+    self.Source:validateSchema(schema)
+    self.Cache:validateSchema(schema)
 end
 
 function db:get(schema, identity, callback)
-    cache:find(schema, identity, function(cachedItem)
+    self.Cache:find(schema, identity, function(cachedItem)
         if cachedItem then
             callback(cachedItem)
         else
-            source:find(schema, identity, function(item)
+            self.Source:find(schema, identity, function(item)
                 if item then
                     -- caches the value asynchronously
-                    cache:insert(schema, item)
+                    self.Cache:insert(schema, item)
                 end
 
                 callback(item)
@@ -33,29 +32,29 @@ function db:get(schema, identity, callback)
 end
 
 function db:filter(schema, filter, callback)
-    source:filter(schema, filter, callback)
+    self.Source:filter(schema, filter, callback)
 end
 
 function db:find(schema, filter, callback)
-    source:find(schema, filter, callback)
+    self.Source:find(schema, filter, callback)
 end
 
 function db:update(schema, object, callback)
-    source:update(schema, object, function()
-        cache:update(schema, object, callback)
+    self.Source:update(schema, object, function()
+        self.Cache:update(schema, object, callback)
     end)
 end
 
 function db:delete(schema, identity, callback)
-    source:delete(schema, identity, function()
-        cache:delete(schema, identity, callback)
+    self.Source:delete(schema, identity, function()
+        self.Cache:delete(schema, identity, callback)
     end)
 end
 
 function db:insert(schema, object, callback)
-    source:insert(schema, object, function(identity)
+    self.Source:insert(schema, object, function(identity)
         object[schema.Identity] = identity
-        cache:insert(schema, object, callback)
+        self.Cache:insert(schema, object, callback)
     end)
 end
 

@@ -32,24 +32,4 @@ function instance_base:delete(callback)
     end
 end
 
-function instance_base:saveAsync()
-    if not util.Promise then
-        error("Promise API not found!")
-    end
-
-    return util.Promise(function(resolve, reject)
-        self:save(resolve)
-    end)
-end
-
-function instance_base:deleteAsync()
-    if not util.Promise then
-        error("Promise API not found!")
-    end
-
-    return util.Promise(function(resolve, reject)
-        self:delete(resolve)
-    end)
-end
-
 return instance_base

@@ -1,28 +1,28 @@
 local db = {}
-local connection, dataflow
+local dataflowFactory = include("sqlier/drivers/helpers/dataflow.lua")
 
 require("mysqloo")
 
 function db:initialize(options)
-    connection = mysqloo.connect(options.address, options.user, options.password, options.database, options.port)
+    self.Connection = mysqloo.connect(options.address, options.user, options.password, options.database, options.port)
 
-    function connection:onConnected()
+    function self.Connection:onConnected()
         db:Log("Connected!")
     end
 
-    function connection:onConnectionFailed(err)
+    function self.Connection:onConnectionFailed(err)
         db:LogError("Connection Failed, please check your settings: ", err)
     end
 
-    connection:connect()
+    self.Connection:connect()
 
-    dataflow = include("sqlier/drivers/helpers/dataflow.lua")
-    dataflow:action(function(query, callback)
+    self.Dataflow = dataflowFactory()
+    self.Dataflow:action(function(query, callback)
         self:query(query, callback)
     end)
 
     if options.queue == true then
-        dataflow:degreeOfParallelism(1)
+        self.Dataflow:degreeOfParallelism(1)
     end
 end
 
@@ -74,13 +74,13 @@ function db:validateSchema(schema)
         end
     end
 
-    dataflow:enqueue(query)
+    self.Dataflow:enqueue(query)
 end
 
 function db:query(query, callback)
     self:Log("Querying: '" .. query .. "'")
 
-    local q = connection:query(query)
+    local q = self.Connection:query(query)
 
     q.onSuccess = function(s, data)
         if callback then
@@ -91,11 +91,11 @@ function db:query(query, callback)
     local tries = 0
 
     q.onError = function(s, err, usedQuery)
-        if connection:status() ~= mysqloo.DATABASE_CONNECTED then
-            connection:connect()
-            connection:wait()
+        if self.Connection:status() ~= mysqloo.DATABASE_CONNECTED then
+            self.Connection:connect()
+            self.Connection:wait()
 
-            if connection:status() ~= mysqloo.DATABASE_CONNECTED then
+            if self.Connection:status() ~= mysqloo.DATABASE_CONNECTED then
                 self:LogError("Re-connection to database server failed.")
                 if callback then
                     callback(false)
@@ -122,7 +122,7 @@ function db:get(schema, identity, callback)
     db:find(schema, { [schema.Identity] = identity }, callback)
 end
 
-local function filterQuery(table, filter)
+local function filterQuery(connection, table, filter)
     local query = "SELECT * FROM `" .. table .. "`"
 
     if filter then
@@ -141,11 +141,11 @@ local function filterQuery(table, filter)
 end
 
 function db:filter(schema, filter, callback)
-    dataflow:enqueue(filterQuery(schema.Table, filter), callback)
+    self.Dataflow:enqueue(filterQuery(self.Connection, schema.Table, filter), callback)
 end
 
 function db:find(schema, filter, callback)
-    dataflow:enqueue(filterQuery(schema.Table, filter) .. " LIMIT 1", function(res)
+    self.Dataflow:enqueue(filterQuery(self.Connection, schema.Table, filter) .. " LIMIT 1", function(res)
         callback(res and res[1])
     end)
 end
@@ -157,9 +157,9 @@ function db:update(schema, object)
     for key, value in pairs(object) do
         if schema.NormalizedColumnsCache[string.lower(key)] then
             if key == schema.Identity then
-                where = "`" .. key .. "` = '" .. connection:escape(value) .. "'"
+                where = "`" .. key .. "` = '" .. self.Connection:escape(value) .. "'"
             else
-                keyValues = keyValues .. "`" .. key .. "`" .. " = '" .. connection:escape(value) .. "'"
+                keyValues = keyValues .. "`" .. key .. "`" .. " = '" .. self.Connection:escape(value) .. "'"
 
                 if next(object, key) ~= nil then
                     keyValues = keyValues .. ", "
@@ -169,7 +169,7 @@ function db:update(schema, object)
     end
 
     local query = "UPDATE `%s` SET %s WHERE %s"
-    dataflow:enqueue(string.format(query, schema.Table, keyValues, where))
+    self.Dataflow:enqueue(string.format(query, schema.Table, keyValues, where))
 
     if isfunction(callback) then
         callback()
@@ -178,7 +178,7 @@ end
 
 function db:delete(schema, identity)
     local query = "DELETE FROM `%s` WHERE `%s` = '%s'"
-    dataflow:enqueue(string.format(query, schema.Table, schema.Identity, connection:escape(identity)))
+    self.Dataflow:enqueue(string.format(query, schema.Table, schema.Identity, self.Connection:escape(identity)))
 
     if isfunction(callback) then
         callback(identity)
@@ -191,7 +191,7 @@ function db:insert(schema, object)
     for key, value in pairs(object) do
         if schema.NormalizedColumnsCache[string.lower(key)] then
             keys = keys .. "`" .. key .. "`"
-            values = values .. "'" .. connection:escape(value) .. "'"
+            values = values .. "'" .. self.Connection:escape(value) .. "'"
 
             if next(object, key) ~= nil then
                 keys = keys .. ", "
@@ -201,7 +201,7 @@ function db:insert(schema, object)
     end
 
     local query = "INSERT INTO `%s`(%s) VALUES(%s)"
-    local q = dataflow:enqueue(string.format(query, schema.Table, keys, values))
+    local q = self.Dataflow:enqueue(string.format(query, schema.Table, keys, values))
 
     if isfunction(callback) then
         callback(q:lastInsert())

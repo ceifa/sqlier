@@ -1,21 +1,21 @@
 local db = {}
-local tables = {}
 
 function db:initialize()
+    self.Tables = {}
 end
 
 function db:validateSchema(schema)
-    tables[schema.Table] = {}
+    self.Tables[schema.Table] = {}
 end
 
 function db:get(schema, identity, callback)
-    callback(tables[schema.Table][identity])
+    callback(self.Tables[schema.Table][identity])
 end
 
 function db:filter(schema, filter, callback)
     local items = {}
 
-    for _, row in pairs(tables[schema.Table]) do
+    for _, row in pairs(self.Tables[schema.Table]) do
         local matching = true
 
         for key, value in pairs(filter) do
@@ -34,7 +34,7 @@ function db:filter(schema, filter, callback)
 end
 
 function db:find(schema, filter, callback)
-    for _, row in pairs(tables[schema.Table]) do
+    for _, row in pairs(self.Tables[schema.Table]) do
         local matching = true
 
         for key, value in pairs(filter) do
@@ -70,7 +70,7 @@ function db:update(schema, object, callback)
 end
 
 function db:delete(schema, identity, callback)
-    tables[schema.Table][identity] = nil
+    self.Tables[schema.Table][identity] = nil
     callback()
 end
 
@@ -81,7 +81,7 @@ function db:insert(schema, object, callback)
         error("You should populate the identity to insert using memory driver")
     end
 
-    tables[schema.Table][identity] = nil
+    self.Tables[schema.Table][identity] = nil
     callback(identity)
 end
 

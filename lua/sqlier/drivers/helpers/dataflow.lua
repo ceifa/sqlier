@@ -1,9 +1,14 @@
-local dataflow = {
-    ConcurrentActions = 0,
-    MaxDegree = 0,
-    Action = function() end,
-    Queue = {}
-}
+local dataflow = {}
+dataflow.__index = dataflow
+
+function dataflow.new()
+    return setmetatable({
+        ConcurrentActions = 0,
+        MaxDegree = 0,
+        Action = function() end,
+        Queue = {}
+    }, dataflow)
+end
 
 function dataflow:degreeOfParallelism(value)
     self.MaxDegree = value
@@ -15,7 +20,6 @@ end
 
 function dataflow:processNext(...)
     self.ConcurrentActions = self.ConcurrentActions + 1
-
     local args = {...}
     local callback = isfunction(args[#args]) and table.remove(args)
 
@@ -41,4 +45,4 @@ function dataflow:enqueue(...)
     end
 end
 
-return dataflow
+return dataflow.new

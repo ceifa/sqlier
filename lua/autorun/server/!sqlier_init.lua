@@ -10,37 +10,21 @@ Type.Date = "DATE"
 Type.DateTime = "DATETIME"
 Type.Timestamp = "TIMESTAMP"
 
--- 0 to disable, 1 for errors only, 2 for debug, 3 for traces
-LogSeverity = CreateConVar("sqlier_logs", 1, FCVAR_NONE, "<0/1/2/3> - Logs severity", 0, 3)
-
 Database = {}
+ModelBase = include("sqlier/model_base.lua")
+InstanceBase = include("sqlier/instance_base.lua")
+Logger = include("sqlier/logger.lua")
 
 function Initialize(database, driver, options)
     local db = include("sqlier/drivers/" .. driver .. ".lua")
     db.__index = db
 
-    function db:Log(log, isError)
-        local enabledSeverity = sqlier.LogSeverity:GetInt()
-
-        if enabledSeverity > 0 and (isError or enabledSeverity > 1) then
-            log = string.format("[%s] %s", string.upper(driver), log)
-
-            if enabledSeverity == 3 then
-                log = log .. "\n" .. debug.traceback()
-            end
-
-            if isError then
-                file.Append("sqlier/errors.txt", log)
-            end
-
-            if hook.Run("SqlierLog", log, isError, enabledSeverity) ~= false then
-                print(log)
-            end
-        end
+    function db:Log(log, severity)
+        Logger:Log(driver, log, severity)
     end
 
     function db:LogError(log)
-        self:Log(log, true)
+        Logger:Log(driver, log, Logger.Error)
     end
 
     db:initialize(options)
@@ -49,11 +33,8 @@ function Initialize(database, driver, options)
     Database[database] = db
 end
 
-
-local model_base = include("sqlier/model_base.lua")
-
 function Model(props)
-    local model = model_base.Model(props)
+    local model = ModelBase.Model(props)
     model:__validate()
     return model
 end
@@ -63,7 +44,7 @@ do
         file.CreateDir("sqlier")
     end
 
-    local files, _ = file.Find("sqlier/database/*.json", "DATA")
+    local files = file.Find("sqlier/database/*.json", "DATA")
 
     for _, name in pairs(files) do
         local databaseConfigJson = file.Read("sqlier/database/" .. name)
