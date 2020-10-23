@@ -62,12 +62,12 @@ function db:validateSchema(schema)
 end
 
 function db:query(query, callback)
-    self:Log(query)
+    self:log(query)
 
     local result = sql.Query(query)
 
     if result == false then
-        self:LogError("Error in query: " .. query .. " ~ Error: " .. sql.LastError())
+        self:logError("Error in query: " .. query .. " ~ Error: " .. sql.LastError())
     end
 
     if callback then

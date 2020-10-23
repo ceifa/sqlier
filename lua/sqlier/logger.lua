@@ -7,7 +7,7 @@ local logger = {
 -- 0 to disable, 1 for errors only, 2 for debug, 3 for traces
 local logSeverity = CreateConVar("sqlier_logs", 1, FCVAR_NONE, "<0/1/2/3> - Logs severity", 0, 3)
 
-function logger:Log(prefix, log, severity)
+function logger:log(prefix, log, severity)
     severity = severity or self.Debug
 
     local enabledSeverity = logSeverity:GetInt()

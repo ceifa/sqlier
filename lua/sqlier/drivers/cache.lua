@@ -5,7 +5,7 @@ function db:initialize(options)
     self.Cache = sqlier.Database[options.cache]
 
     if not self.Source or not self.Cache then
-        db:LogError("Source or cache database was not previously registered")
+        db:logError("Source or cache database was not previously registered")
     end
 end
 
@@ -15,11 +15,11 @@ function db:validateSchema(schema)
 end
 
 function db:get(schema, identity, callback)
-    self.Cache:find(schema, identity, function(cachedItem)
+    self.Cache:get(schema, identity, function(cachedItem)
         if cachedItem then
             callback(cachedItem)
         else
-            self.Source:find(schema, identity, function(item)
+            self.Source:get(schema, identity, function(item)
                 if item then
                     -- caches the value asynchronously
                     self.Cache:insert(schema, item)

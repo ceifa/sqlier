@@ -41,7 +41,9 @@ function db:update(schema, object, callback)
         end
 
         db:insert(schema, res, function()
-            callback()
+            if isfunction(callback) then
+                callback()
+            end
         end)
     end)
 end
@@ -53,7 +55,9 @@ function db:increment(schema, object, callback)
         end
 
         db:insert(schema, res, function()
-            callback()
+            if isfunction(callback) then
+                callback()
+            end
         end)
     end)
 end
@@ -65,14 +69,18 @@ function db:decrement(schema, object, callback)
         end
 
         db:insert(schema, res, function()
-            callback()
+            if isfunction(callback) then
+                callback()
+            end
         end)
     end)
 end
 
 function db:delete(schema, identity, callback)
     file.Delete("sqlier/" .. schema.Table .. "/" .. escapeIdentity(identity) .. ".json")
-    callback()
+        if isfuction(callback) then
+                callback()
+            end
 end
 
 function db:insert(schema, object, callback)
@@ -83,7 +91,9 @@ function db:insert(schema, object, callback)
     end
 
     file.Write("sqlier/" .. schema.Table .. "/" .. escapeIdentity(identity) .. ".json", util.TableToJSON(object))
-    callback(identity)
+    if isfunction(callback) then
+        callback(identity)
+    end
 end
 
 return db

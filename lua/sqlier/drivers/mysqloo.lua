@@ -7,11 +7,11 @@ function db:initialize(options)
     self.Connection = mysqloo.connect(options.address, options.user, options.password, options.database, options.port)
 
     function self.Connection:onConnected()
-        db:Log("Connected!")
+        db:log("Connected!")
     end
 
     function self.Connection:onConnectionFailed(err)
-        db:LogError("Connection Failed, please check your settings: ", err)
+        db:logError("Connection Failed, please check your settings: ", err)
     end
 
     self.Connection:connect()
@@ -78,7 +78,7 @@ function db:validateSchema(schema)
 end
 
 function db:query(query, callback)
-    self:Log("Querying: '" .. query .. "'")
+    self:log("Querying: '" .. query .. "'")
 
     local q = self.Connection:query(query)
 
@@ -96,7 +96,7 @@ function db:query(query, callback)
             self.Connection:wait()
 
             if self.Connection:status() ~= mysqloo.DATABASE_CONNECTED then
-                self:LogError("Re-connection to database server failed.")
+                self:logError("Re-connection to database server failed.")
                 if callback then
                     callback(false)
                 end
@@ -105,7 +105,7 @@ function db:query(query, callback)
             end
         end
 
-        self:LogError("Query Failed: " .. err .. "(" .. usedQuery .. ")")
+        self:logError("Query Failed: " .. err .. "(" .. usedQuery .. ")")
 
         if tries < 3 then
             tries = tries + 1

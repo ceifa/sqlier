@@ -49,6 +49,8 @@ function db:find(schema, filter, callback)
             return
         end
     end
+
+    callback(nil)
 end
 
 function db:update(schema, object, callback)
@@ -64,7 +66,9 @@ function db:update(schema, object, callback)
         end
 
         db:insert(schema, object, function()
-            callback()
+            if isfunction(callback) then
+                callback()
+            end
         end)
     end)
 end
@@ -76,7 +80,9 @@ function db:increment(schema, object, callback)
         end
 
         db:insert(schema, res, function()
-            callback()
+            if isfunction(callback) then
+                callback()
+            end
         end)
     end)
 end
@@ -88,14 +94,18 @@ function db:decrement(schema, object, callback)
         end
 
         db:insert(schema, res, function()
-            callback()
+            if isfunction(callback) then
+                callback()
+            end
         end)
     end)
 end
 
 function db:delete(schema, identity, callback)
     self.Tables[schema.Table][identity] = nil
-    callback()
+    if isfunction(callback) then
+        callback()
+    end
 end
 
 function db:insert(schema, object, callback)
@@ -106,7 +116,9 @@ function db:insert(schema, object, callback)
     end
 
     self.Tables[schema.Table][identity] = nil
-    callback(identity)
+    if isfunction(callback) then
+        callback(identity)
+    end
 end
 
 return db

@@ -11,20 +11,20 @@ Type.DateTime = "DATETIME"
 Type.Timestamp = "TIMESTAMP"
 
 Database = {}
+Logger = include("sqlier/logger.lua")
 ModelBase = include("sqlier/model_base.lua")
 InstanceBase = include("sqlier/instance_base.lua")
-Logger = include("sqlier/logger.lua")
 
 function Initialize(database, driver, options)
     local db = include("sqlier/drivers/" .. driver .. ".lua")
     db.__index = db
 
-    function db:Log(log, severity)
-        Logger:Log(driver, log, severity)
+    function db:log(log, severity)
+        Logger:log(driver, log, severity)
     end
 
-    function db:LogError(log)
-        Logger:Log(driver, log, Logger.Error)
+    function db:logError(log)
+        Logger:log(driver, log, Logger.Error)
     end
 
     db:initialize(options)
@@ -46,10 +46,12 @@ do
 
     local files = file.Find("sqlier/database/*.json", "DATA")
 
-    for _, name in pairs(files) do
+    for _, name in SortedPairsByValue(files) do
+        local database = string.StripExtension(name)
+        Logger:log("LOADER", "Loading database " .. database)
+
         local databaseConfigJson = file.Read("sqlier/database/" .. name)
         local databaseConfig = util.JSONToTable(databaseConfigJson)
-        local database = string.StripExtension(name)
 
         Initialize(database, databaseConfig.driver, databaseConfig)
     end
