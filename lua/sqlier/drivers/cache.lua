@@ -45,6 +45,18 @@ function db:update(schema, object, callback)
     end)
 end
 
+function db:increment(schema, object, callback)
+    self.Source:increment(schema, object, function()
+        self.Cache:increment(schema, object, callback)
+    end)
+end
+
+function db:decrement(schema, object, callback)
+    self.Source:decrement(schema, object, function()
+        self.Cache:decrement(schema, object, callback)
+    end)
+end
+
 function db:delete(schema, identity, callback)
     self.Source:delete(schema, identity, function()
         self.Cache:delete(schema, identity, callback)

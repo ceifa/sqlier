@@ -69,6 +69,30 @@ function db:update(schema, object, callback)
     end)
 end
 
+function db:increment(schema, object, callback)
+    self:get(schema, Identity, function(res)
+        for key, value in pairs(object) do
+            res[key] = res[key] + value
+        end
+
+        db:insert(schema, res, function()
+            callback()
+        end)
+    end)
+end
+
+function db:decrement(schema, object, callback)
+    self:get(schema, Identity, function(res)
+        for key, value in pairs(object) do
+            res[key] = res[key] - value
+        end
+
+        db:insert(schema, res, function()
+            callback()
+        end)
+    end)
+end
+
 function db:delete(schema, identity, callback)
     self.Tables[schema.Table][identity] = nil
     callback()

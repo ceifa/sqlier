@@ -133,6 +133,58 @@ function db:update(schema, object, callback)
     end
 end
 
+function db:increment(schema, object, callback)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = " .. sql.SQLStr(value)
+            elseif isnumber(value) then
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ""
+
+                if next(object, key) ~= nil then
+                    keyValues = keyValues .. ", "
+                end
+            end
+        end
+    end
+
+    local query = "UPDATE `%s` SET %s WHERE %s"
+    self:query(string.format(query, schema.Table, keyValues, where))
+
+    if isfunction(callback) then
+        callback()
+    end
+end
+
+function db:decrement(schema, object, callback)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = " .. sql.SQLStr(value)
+            elseif isnumber(value) then
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ""
+
+                if next(object, key) ~= nil then
+                    keyValues = keyValues .. ", "
+                end
+            end
+        end
+    end
+
+    local query = "UPDATE `%s` SET %s WHERE %s"
+    self:query(string.format(query, schema.Table, keyValues, where))
+
+    if isfunction(callback) then
+        callback()
+    end
+end
+
 function db:delete(schema, identity, callback)
     local query = "DELETE FROM `%s` WHERE `%s` = %s"
     self:query(string.format(query, schema.Table, schema.Identity, sql.SQLStr(identity)))

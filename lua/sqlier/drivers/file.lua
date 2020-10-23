@@ -40,7 +40,31 @@ function db:update(schema, object, callback)
             res[key] = value
         end
 
-        db:insert(schema, object, function()
+        db:insert(schema, res, function()
+            callback()
+        end)
+    end)
+end
+
+function db:increment(schema, object, callback)
+    self:get(schema, Identity, function(res)
+        for key, value in pairs(object) do
+            res[key] = res[key] + value
+        end
+
+        db:insert(schema, res, function()
+            callback()
+        end)
+    end)
+end
+
+function db:decrement(schema, object, callback)
+    self:get(schema, Identity, function(res)
+        for key, value in pairs(object) do
+            res[key] = res[key] - value
+        end
+
+        db:insert(schema, res, function()
             callback()
         end)
     end)

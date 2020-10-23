@@ -38,6 +38,14 @@ function model_base:update(object, callback)
     self:database():update(self, object, callback)
 end
 
+function model_base:increment(object, callback)
+    self:database():increment(self, object, callback)
+end
+
+function model_base:decrement(object, callback)
+    self:database():decrement(self, object, callback)
+end
+
 function model_base:delete(identity, callback)
     self:database():delete(self,  identity, callback)
 end

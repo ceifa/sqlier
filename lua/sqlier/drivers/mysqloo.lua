@@ -150,7 +150,7 @@ function db:find(schema, filter, callback)
     end)
 end
 
-function db:update(schema, object)
+function db:update(schema, object, callback)
     local where
     local keyValues = ""
 
@@ -160,6 +160,58 @@ function db:update(schema, object)
                 where = "`" .. key .. "` = '" .. self.Connection:escape(value) .. "'"
             else
                 keyValues = keyValues .. "`" .. key .. "`" .. " = '" .. self.Connection:escape(value) .. "'"
+
+                if next(object, key) ~= nil then
+                    keyValues = keyValues .. ", "
+                end
+            end
+        end
+    end
+
+    local query = "UPDATE `%s` SET %s WHERE %s"
+    self.Dataflow:enqueue(string.format(query, schema.Table, keyValues, where))
+
+    if isfunction(callback) then
+        callback()
+    end
+end
+
+function db:increment(schema, object, callback)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = '" .. self.Connection:escape(value) .. "'"
+            elseif isnumber(value) then
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` + " .. value .. ""
+
+                if next(object, key) ~= nil then
+                    keyValues = keyValues .. ", "
+                end
+            end
+        end
+    end
+
+    local query = "UPDATE `%s` SET %s WHERE %s"
+    self.Dataflow:enqueue(string.format(query, schema.Table, keyValues, where))
+
+    if isfunction(callback) then
+        callback()
+    end
+end
+
+function db:decrement(schema, object, callback)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = '" .. self.Connection:escape(value) .. "'"
+            elseif isnumber(value) then
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ""
 
                 if next(object, key) ~= nil then
                     keyValues = keyValues .. ", "
