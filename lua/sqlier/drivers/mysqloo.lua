@@ -133,7 +133,7 @@ local function filterQuery(connection, table, filter)
                 value = connection:escape(value)
             end
 
-            query = query .. "`" .. key .. "` = '" .. value .. "'"
+            query = query .. "`" .. key .. "` = '" .. tostring(value) .. "'"
 
             if next(filter, key) ~= nil then
                 query = query .. " AND "
