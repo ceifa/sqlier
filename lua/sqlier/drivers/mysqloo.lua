@@ -129,7 +129,11 @@ local function filterQuery(connection, table, filter)
         query = query .. " WHERE "
 
         for key, value in pairs(filter) do
-            query = query .. "`" .. key .. "` = '" .. connection:escape(value) .. "'"
+            if isstring(value) then
+                value = connection:escape(value)
+            end
+
+            query = query .. "`" .. key .. "` = '" .. value .. "'"
 
             if next(filter, key) ~= nil then
                 query = query .. " AND "
