@@ -1,26 +1,31 @@
 Are you tired of these lots of heavy database libraries which do a lot of things which you don't need? You came at the right place! This project aims to offer a way of writing a very simple code only one time and be able to switch between multiple database drivers without problems. The most easier and lightweight database abstraction of the market!
 
-> Alert: This project will not fill all the database edge cases and not aims to fill.
+> Alert: This project will not fill all the edge database cases and does not aim to do so.
 
 ## Usage
 
 ### Setup a database
 
 Firstly you will need to setup your databases, you can do it in two ways.
+#### First method: Initialize function
+sqlier can be itnialized by running the initializer function `sqlier.Initialize(name, drive, conn)` which accepts the following arguments:
 
-The first way is calling the initilizer function `sqlier.Initialize`, it accepts three arguments:
+1. `STRING` `name`: Identification name for the database (can be anything)
+2. `STRING` `driver`: The desired database driver, currently supports:
+   - `sqlite`: Uses default [Garry's Mod Sqlite](https://wiki.facepunch.com/gmod/sql) interface
+   - `mysqloo`: Uses the [Mysqloo Module](https://github.com/FredyH/MySQLOO) (provides MySQL interface)
+   - `file`: Uses [plain files](https://wiki.facepunch.com/gmod/file_class) to read and store data
+4. `optional` | `STRING` `Connection info`: Only needed when using MySqloo driver, passing the database authentication details.  
 
-1. Name, it's just a name to identify your database, it can be anything
-
-2. Driver, available options are: `sqlite`, `mysqloo`, `file`
-
-3. Options, the only one currently using it is the `mysqloo` driver, where you need to pass the database connection details
-
-```
+```lua
+ -- Sqlite
 sqlier.Initialize("db1", "sqlite")
-```
 
-The second way is creating a json file inside the `data/sqlier/database` directory:
+ -- MySQL
+sqlier.Initialize("db2", "mysqloo", { address = "localhost", port = "3306", database = "GmodServer", user = "root", password = "" })
+```
+#### Second method: Json config file
+sqlier will also search for the `data/sqlier/database` directory:
 
 * db2.json
 ```json
@@ -51,7 +56,7 @@ local User = sqlier.Model({
         },
         Rank = {
             Type = sqlier.Type.String,
-            MaxLenght = 15
+            MaxLength = 15
         },
         SteamId64 = {
             Type = sqlier.Type.SteamId64
@@ -98,7 +103,7 @@ new_user:delete()
 new_user:save()
 ```
 
-If you want to know when a save or delete is done, you can pass a callback or use their async api, if suporting `util.Promise`:
+If you want to know when a save or delete is done, you can pass a callback or use their async api, if using `util.Promise`:
 
 ```lua
 new_user:save(function()
