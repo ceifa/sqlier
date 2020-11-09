@@ -19,8 +19,8 @@ function db:validateSchema(schema)
         local type = options.Type
 
         if type == sqlier.Type.String then
-            if options.MaxLenght then
-                type = "VARCHAR(" .. tostring(options.MaxLenght) .. ")"
+            if options.MaxLength then
+                type = "VARCHAR(" .. tostring(options.MaxLength) .. ")"
             end
         elseif type == sqlier.Type.SteamId64 then
             type = "CHAR(17)"
