@@ -56,7 +56,7 @@ local User = sqlier.Model({
         },
         Rank = {
             Type = sqlier.Type.String,
-            MaxLenght = 15
+            MaxLength = 15
         },
         SteamId64 = {
             Type = sqlier.Type.SteamId64
