@@ -40,8 +40,8 @@ function db:validateSchema(schema)
         local type = options.Type
 
         if type == sqlier.Type.String then
-            if options.MaxLenght then
-                type = "VARCHAR(" .. tostring(math.min(16383, options.MaxLenght)) .. ")"
+            if options.MaxLength then
+                type = "VARCHAR(" .. tostring(math.min(16383, options.MaxLength)) .. ")"
             else
                 type = "TEXT"
             end
