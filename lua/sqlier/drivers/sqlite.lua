@@ -1,5 +1,21 @@
 local db = {}
 
+local function filterQuery(table, filter)
+    local query = "SELECT * FROM `" .. table .. "`"
+
+    if filter then
+        query = query .. " WHERE "
+
+        for key, value in pairs(filter) do
+            query = query .. "`" .. key .. "` = " .. sql.SQLStr(value) .. " AND "
+        end
+
+        query = query:sub(1, -6)
+    end
+
+    return query
+end
+
 function db:initialize()
 end
 
@@ -42,12 +58,10 @@ function db:validateSchema(schema)
             query = query .. " DEFAULT (" .. sql.SQLStr(options.Default, not isstring(options.Default)) .. ")"
         end
 
-        if next(schema.Columns, name) == nil then
-            query = query .. ")"
-        else
-            query = query .. ", "
-        end
+        query = query .. ", "
     end
+
+    query = query:sub(1, -3) .. ")"
 
     self:query(query)
 
@@ -79,24 +93,6 @@ function db:get(schema, identity, callback)
     db:find(schema, { [schema.Identity] = identity }, callback)
 end
 
-local function filterQuery(table, filter)
-    local query = "SELECT * FROM `" .. table .. "`"
-
-    if filter then
-        query = query .. " WHERE "
-
-        for key, value in pairs(filter) do
-            query = query .. "`" .. key .. "` = " .. sql.SQLStr(value)
-
-            if next(filter, key) ~= nil then
-                query = query .. " AND "
-            end
-        end
-    end
-
-    return query
-end
-
 function db:filter(schema, filter, callback)
     self:query(filterQuery(schema.Table, filter), callback)
 end
@@ -116,13 +112,13 @@ function db:update(schema, object, callback)
             if key == schema.Identity then
                 where = "`" .. key .. "` = " .. sql.SQLStr(value)
             else
-                keyValues = keyValues .. "`" .. key .. "`" .. " = " .. sql.SQLStr(value)
-
-                if next(object, key) ~= nil then
-                    keyValues = keyValues .. ", "
-                end
+                keyValues = keyValues .. "`" .. key .. "`" .. " = " .. sql.SQLStr(value) .. ", "
             end
         end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
     end
 
     local query = "UPDATE `%s` SET %s WHERE %s"
@@ -142,13 +138,13 @@ function db:increment(schema, object, callback)
             if key == schema.Identity then
                 where = "`" .. key .. "` = " .. sql.SQLStr(value)
             elseif isnumber(value) then
-                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ""
-
-                if next(object, key) ~= nil then
-                    keyValues = keyValues .. ", "
-                end
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ", "
             end
         end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
     end
 
     local query = "UPDATE `%s` SET %s WHERE %s"
@@ -168,13 +164,13 @@ function db:decrement(schema, object, callback)
             if key == schema.Identity then
                 where = "`" .. key .. "` = " .. sql.SQLStr(value)
             elseif isnumber(value) then
-                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ""
-
-                if next(object, key) ~= nil then
-                    keyValues = keyValues .. ", "
-                end
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ", "
             end
         end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
     end
 
     local query = "UPDATE `%s` SET %s WHERE %s"
@@ -199,15 +195,13 @@ function db:insert(schema, object, callback)
 
     for key, value in pairs(object) do
         if schema.NormalizedColumnsCache[string.lower(key)] then
-            keys = keys .. "`" .. key .. "`"
-            values = values .. sql.SQLStr(value)
-
-            if next(object, key) ~= nil then
-                keys = keys .. ", "
-                values = values .. ", "
-            end
+            keys = keys .. "`" .. key .. "`" .. ", "
+            values = values .. sql.SQLStr(value) .. ", "
         end
     end
+
+    keys = keys:sub(1, -3)
+    values = values:sub(1, -3)
 
     local query = "INSERT INTO `%s`(%s) VALUES(%s)"
     self:query(string.format(query, schema.Table, keys, values))

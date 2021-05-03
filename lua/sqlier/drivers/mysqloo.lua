@@ -3,6 +3,34 @@ local dataflowFactory = include("sqlier/drivers/helpers/dataflow.lua")
 
 require("mysqloo")
 
+local function escape(connection, value)
+    if isstring(value) then
+        return connection:escape(value)
+    else
+        return tostring(value)
+    end
+end
+
+local function filterQuery(connection, table, filter)
+    local query = "SELECT * FROM `" .. table .. "`"
+
+    if filter then
+        query = query .. " WHERE "
+
+        for key, value in pairs(filter) do
+            if isstring(value) then
+                value = "'" .. escape(connection, value) .. "'"
+            end
+
+            query = query .. "`" .. key .. "` = " .. tostring(value) .. " AND "
+        end
+
+        query = query:sub(1, -6)
+    end
+
+    return query
+end
+
 function db:initialize(options)
     self.Connection = mysqloo.connect(options.address, options.user, options.password, options.database, options.port)
 
@@ -67,12 +95,10 @@ function db:validateSchema(schema)
             query = query .. " DEFAULT (" .. sql.SQLStr(options.Default, not isstring(options.Default)) .. ")"
         end
 
-        if next(schema.Columns, name) == nil then
-            query = query .. ")"
-        else
-            query = query .. ", "
-        end
+        query = query .. ", "
     end
+
+    query = query:sub(1, -3) .. ")"
 
     self.Dataflow:enqueue(query)
 end
@@ -122,28 +148,6 @@ function db:get(schema, identity, callback)
     db:find(schema, { [schema.Identity] = identity }, callback)
 end
 
-local function filterQuery(connection, table, filter)
-    local query = "SELECT * FROM `" .. table .. "`"
-
-    if filter then
-        query = query .. " WHERE "
-
-        for key, value in pairs(filter) do
-            if isstring(value) then
-                value = "'" .. connection:escape(value) .. "'"
-            end
-
-            query = query .. "`" .. key .. "` = " .. tostring(value)
-
-            if next(filter, key) ~= nil then
-                query = query .. " AND "
-            end
-        end
-    end
-
-    return query
-end
-
 function db:filter(schema, filter, callback)
     self.Dataflow:enqueue(filterQuery(self.Connection, schema.Table, filter), callback)
 end
@@ -161,15 +165,15 @@ function db:update(schema, object, callback)
     for key, value in pairs(object) do
         if schema.NormalizedColumnsCache[string.lower(key)] then
             if key == schema.Identity then
-                where = "`" .. key .. "` = '" .. self.Connection:escape(value) .. "'"
+                where = "`" .. key .. "` = '" .. escape(self.Connection, value) .. "'"
             else
-                keyValues = keyValues .. "`" .. key .. "`" .. " = '" .. self.Connection:escape(value) .. "'"
-
-                if next(object, key) ~= nil then
-                    keyValues = keyValues .. ", "
-                end
+                keyValues = keyValues .. "`" .. key .. "`" .. " = '" .. escape(self.Connection, value) .. "'" .. ", "
             end
         end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
     end
 
     local query = "UPDATE `%s` SET %s WHERE %s"
@@ -187,15 +191,15 @@ function db:increment(schema, object, callback)
     for key, value in pairs(object) do
         if schema.NormalizedColumnsCache[string.lower(key)] then
             if key == schema.Identity then
-                where = "`" .. key .. "` = '" .. self.Connection:escape(value) .. "'"
+                where = "`" .. key .. "` = '" .. escape(self.Connection, value) .. "'"
             elseif isnumber(value) then
-                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` + " .. value .. ""
-
-                if next(object, key) ~= nil then
-                    keyValues = keyValues .. ", "
-                end
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` + " .. value .. ", "
             end
         end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
     end
 
     local query = "UPDATE `%s` SET %s WHERE %s"
@@ -213,15 +217,15 @@ function db:decrement(schema, object, callback)
     for key, value in pairs(object) do
         if schema.NormalizedColumnsCache[string.lower(key)] then
             if key == schema.Identity then
-                where = "`" .. key .. "` = '" .. self.Connection:escape(value) .. "'"
+                where = "`" .. key .. "` = '" .. escape(self.Connection, value) .. "'"
             elseif isnumber(value) then
-                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ""
-
-                if next(object, key) ~= nil then
-                    keyValues = keyValues .. ", "
-                end
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ", "
             end
         end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
     end
 
     local query = "UPDATE `%s` SET %s WHERE %s"
@@ -234,7 +238,7 @@ end
 
 function db:delete(schema, identity)
     local query = "DELETE FROM `%s` WHERE `%s` = '%s'"
-    self.Dataflow:enqueue(string.format(query, schema.Table, schema.Identity, self.Connection:escape(identity)))
+    self.Dataflow:enqueue(string.format(query, schema.Table, schema.Identity, escape(self.Connection, identity)))
 
     if isfunction(callback) then
         callback(identity)
@@ -246,15 +250,13 @@ function db:insert(schema, object)
 
     for key, value in pairs(object) do
         if schema.NormalizedColumnsCache[string.lower(key)] then
-            keys = keys .. "`" .. key .. "`"
-            values = values .. "'" .. self.Connection:escape(value) .. "'"
-
-            if next(object, key) ~= nil then
-                keys = keys .. ", "
-                values = values .. ", "
-            end
+            keys = keys .. "`" .. key .. "`" .. ", "
+            values = values .. "'" .. escape(self.Connection, value) .. "'" .. ", "
         end
     end
+
+    keys = keys:sub(1, -3)
+    values = values:sub(1, -3)
 
     local query = "INSERT INTO `%s`(%s) VALUES(%s)"
     local q = self.Dataflow:enqueue(string.format(query, schema.Table, keys, values))
