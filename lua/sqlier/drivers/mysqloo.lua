@@ -36,13 +36,12 @@ function db:initialize(options)
 
     function self.Connection:onConnected()
         db:log("Connected!")
+        db.Dataflow:start()
     end
 
     function self.Connection:onConnectionFailed(err)
         db:logError("Connection Failed, please check your settings: ", err)
     end
-
-    self.Connection:connect()
 
     self.Dataflow = dataflowFactory()
     self.Dataflow:action(function(query, callback)
@@ -52,6 +51,8 @@ function db:initialize(options)
     if options.queue == true then
         self.Dataflow:degreeOfParallelism(1)
     end
+
+    self.Connection:connect()
 end
 
 function db:validateSchema(schema)

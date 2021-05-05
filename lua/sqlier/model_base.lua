@@ -2,6 +2,15 @@ local model_base = {}
 model_base.__index = model_base
 
 function model_base.Model(props)
+    if not props.Database and table.Count(sqlier.Database) == 1 then
+        props.Database = next(sqlier.Database)
+
+        local warning = string.format("Database for table '%s' not set, fallbacking to '%s'", props.Table, props.Database)
+        sqlier.Logger:log("MODEL", warning, sqlier.Logger.Error)
+    elseif not sqlier.Database[props.Database] then
+        error(string.format("Could not find a database with key '%s', you forgot to register it?", props.Database))
+    end
+
     return setmetatable(props, model_base)
 end
 
@@ -14,7 +23,7 @@ end
 
 function model_base:get(identity, callback)
     self:database():get(self, identity, function(item)
-        callback(item and self:__build(item) or nil)
+        callback(self:__build(item))
     end)
 end
 
@@ -55,15 +64,7 @@ function model_base:insert(object, callback)
 end
 
 function model_base:database()
-    local db = sqlier.Database[self.Database]
-
-    if not db then
-        error(string.format(
-            "Could not find a database with key '%s', you forgot to register it?",
-            self.Database))
-    end
-
-    return db
+    return sqlier.Database[self.Database]
 end
 
 function model_base:__validate()
