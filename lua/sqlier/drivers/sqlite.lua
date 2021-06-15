@@ -49,7 +49,7 @@ function db:validateSchema(schema)
         end
 
         if options.AutoIncrement then
-            query = query .. "AUTOINCREMENT"
+            query = query .. " AUTOINCREMENT"
         end
 
         if type == sqlier.Type.Timestamp and name == "CreateTimestamp" then
