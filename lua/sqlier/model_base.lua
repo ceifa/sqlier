@@ -2,7 +2,11 @@ local model_base = {}
 model_base.__index = model_base
 
 function model_base.Model(props)
-    if not props.Database and table.Count(sqlier.Database) == 1 then
+    if not props.Database then
+        if table.Count(sqlier.Database) == 0 then
+            sqlier.Initialize("fallback-sqlier", "sqlite")
+        end
+
         props.Database = next(sqlier.Database)
 
         local warning = string.format("Database for table '%s' not set, fallbacking to '%s'", props.Table, props.Database)
