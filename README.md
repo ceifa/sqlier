@@ -2,13 +2,14 @@ Are you tired of these lots of heavy database libraries which do a lot of things
 
 > Alert: This project will not fill all the edge database cases and does not aim to do so.
 
+## Documentation
+You can find the full library documentaion [here](https://github.com/ceifa/sqlier/wiki).
+
 ## Usage
 
 ### Setup a database
 
-Firstly you will need to setup your databases, you can do it in two ways.
-#### First method: Initialize function
-sqlier can be itnialized by running the initializer function `sqlier.Initialize(name, drive, conn)` which accepts the following arguments:
+Firstly you will need to setup your databases, sqlier can be initialized by running the initializer function `sqlier.Initialize(name, drive, conn)` which accepts the following arguments:
 
 1. `STRING` `name`: Identification name for the database (can be anything)
 2. `STRING` `driver`: The desired database driver, currently supports:
@@ -23,20 +24,6 @@ sqlier.Initialize("db1", "sqlite")
 
  -- MySQL
 sqlier.Initialize("db2", "mysqloo", { address = "localhost", port = "3306", database = "GmodServer", user = "root", password = "" })
-```
-#### Second method: Json config file
-sqlier will also search for the `data/sqlier/database` directory:
-
-* db2.json
-```json
-{
-    "driver": "mysqloo",
-    "address": "localhost",
-    "port": "3306",
-    "database": "GmodServer",
-    "user": "root",
-    "password": ""
-}
 ```
 
 ### Setup a model
@@ -71,19 +58,6 @@ local User = sqlier.Model({
 
 The columns `CreateTimestamp` and `UpdateTimestamp` are hard-coded internally populated automatically.
 
-Available data types are:
-
-```lua
-sqlier.Type.String
-sqlier.Type.Integer
-sqlier.Type.Float
-sqlier.Type.SteamId64
-sqlier.Type.Bool
-sqlier.Type.Date
-sqlier.Type.DateTime
-sqlier.Type.Timestamp
-```
-
 ### Instantiate, update or delete a model
 
 ```lua
@@ -98,9 +72,6 @@ new_user.Rank = "donator"
 new_user:save()
 
 new_user:delete()
-
--- throw an error
-new_user:save()
 ```
 
 If you want to know when a save or delete is done, you can pass a callback or use their async api, if using `util.Promise`:
@@ -155,7 +126,3 @@ else
     error("Database driver not supported")
 end
 ```
-
-### Logs
-
-To enable the querying logs, set the convar `sqlier_logs` to `1`. Error logs will always log at the console and to the `data/sqlier` folder, at the `errors.txt` file.
