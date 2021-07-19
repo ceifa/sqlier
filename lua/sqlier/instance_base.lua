@@ -26,7 +26,7 @@ function instance_base:save(callback)
 end
 
 function instance_base:delete(callback)
-    self.model():delete(self[self.model.Identity], callback)
+    self.model():delete(self[self.model().Identity], callback)
     self.deleted = function()
         return true
     end

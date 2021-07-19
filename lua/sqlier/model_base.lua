@@ -2,6 +2,15 @@ local model_base = {}
 model_base.__index = model_base
 
 function model_base.Model(props)
+    if not props.Table then
+        error("A model cannot be created without a table name")
+    end
+
+    if not props.Identity then
+        error(string.format(
+            "Tried to create model '%s' without an identity, please add a property 'Identity' to it", props.Table))
+    end
+
     if not props.Database then
         if table.Count(sqlier.Database) == 0 then
             sqlier.Initialize("fallback-sqlier", "sqlite")
@@ -33,6 +42,10 @@ end
 
 function model_base:filter(filter, callback)
     self:database():filter(self, filter, function(items)
+        if not items then
+            callback({})
+        end
+
         for key, value in ipairs(items) do
             items[key] = self:__build(value)
         end
