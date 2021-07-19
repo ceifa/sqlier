@@ -42,9 +42,7 @@ end
 
 function model_base:filter(filter, callback)
     self:database():filter(self, filter, function(items)
-        if not items then
-            callback({})
-        end
+        items = items or {}
 
         for key, value in ipairs(items) do
             items[key] = self:__build(value)
