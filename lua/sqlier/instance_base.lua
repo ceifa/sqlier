@@ -20,7 +20,14 @@ function instance_base:save(callback)
                 end
             end)
         else
-            self.model():insert(self, callback)
+            self.model():insert(self, function(createdId)
+                if createdId then
+                    self[self.model().Identity] = createdId
+                end
+                if isfunction(callback) then
+                    callback(createdId)
+                end
+            end)
         end
     end
 end
