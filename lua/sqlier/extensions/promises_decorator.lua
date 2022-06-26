@@ -1,4 +1,4 @@
-local use_experimental_promises = CreateConVar("sqlier_experimental_promises_decorator", false, FCVAR_ARCHIVE,
+local use_experimental_promises = CreateConVar("sqlier_experimental_promises_decorator", 0, FCVAR_ARCHIVE,
     "Use experimental promises decorator")
 
 if not use_experimental_promises:GetBool() then
