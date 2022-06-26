@@ -2,15 +2,17 @@ if CLIENT then return end
 
 module("sqlier", package.seeall)
 
-Type = {}
-Type.String = "STRING"
-Type.Integer = "INTEGER"
-Type.Float = "FLOAT"
-Type.SteamId64 = "STEAMID64"
-Type.Bool = "BOOLEAN"
-Type.Date = "DATE"
-Type.DateTime = "DATETIME"
-Type.Timestamp = "TIMESTAMP"
+Type = {
+    String = "STRING",
+    Integer = "INTEGER",
+    Float = "FLOAT",
+    SteamId64 = "STEAMID64",
+    Bool = "BOOLEAN",
+    Date = "DATE",
+    DateTime = "DATETIME",
+    Timestamp = "TIMESTAMP",
+    Color = "COLOR"
+}
 
 Database = {}
 Logger = include("sqlier/logger.lua")

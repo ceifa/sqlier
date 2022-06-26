@@ -52,6 +52,7 @@ function db:initialize(options)
         self.Dataflow:degreeOfParallelism(1)
     end
 
+    self.MaxRetries = options.maxRetries or 3
     self.Connection:connect()
 end
 
@@ -134,7 +135,7 @@ function db:query(query, callback)
 
         self:logError("Query Failed: " .. err .. "(" .. usedQuery .. ")")
 
-        if tries < 3 then
+        if tries < self.MaxRetries then
             tries = tries + 1
             q:start()
         end
