@@ -1,13 +1,11 @@
-do
-    local files = file.Find("sqlier/extensions/*.lua", "LUA")
+local files = file.Find("sqlier/extensions/*.lua", "LUA")
 
-    sqlier.Logger:log("LOADER", "Loading sqlier extensions")
+sqlier.Logger:log("LOADER", "Loading sqlier extensions")
 
-    for _, name in ipairs(files) do
-        local loaded = include("sqlier/extensions/" .. name)
+for _, name in ipairs(files) do
+    local loaded = include("sqlier/extensions/" .. name)
 
-        sqlier.Logger:log("LOADER",
-            (loaded == false and "Failed to load" or "Loaded") .. " extension " .. name,
-            sqlier.Logger.Trace)
+    if loaded ~= false then
+        sqlier.Logger:log("LOADER", "Loaded extension " .. name, sqlier.Logger.Debug)
     end
 end
