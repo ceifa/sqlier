@@ -2,19 +2,19 @@ if not util.Promise then
     return false
 end
 
-function sqlier.ModelBase:getAsync(identity, callback)
+function sqlier.ModelBase:getAsync(identity)
     return util.Promise(function(resolve, reject)
         self:get(identity, resolve)
     end)
 end
 
-function sqlier.ModelBase:findAsync(filter, callback)
+function sqlier.ModelBase:findAsync(filter)
     return util.Promise(function(resolve, reject)
         self:find(filter, resolve)
     end)
 end
 
-function sqlier.ModelBase:filterAsync(filter, callback)
+function sqlier.ModelBase:filterAsync(filter)
     return util.Promise(function(resolve, reject)
         self:filter(filter, resolve)
     end)
