@@ -133,7 +133,11 @@ function db:query(query, callback)
             end
         end
 
-        self:logError("Query Failed: " .. err .. "(" .. usedQuery .. ")")
+        if usedQuery then
+            self:logError("Query failed: " .. err .. "(" .. usedQuery .. ")")
+        else
+            self:logError(err)
+        end
 
         if tries < self.MaxRetries then
             tries = tries + 1
