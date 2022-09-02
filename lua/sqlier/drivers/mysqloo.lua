@@ -113,8 +113,6 @@ function db:validateSchema(schema)
     end
 
     if istable(schema.Identity) and #schema.Identity > 0 then
-        print("Primary Keys Cache", schema.Identity)
-        PrintTable(schema.Identity)
         query = query .. "PRIMARY KEY (`" .. table.concat(schema.Identity, "`, `") .. "`), "
     end
 
