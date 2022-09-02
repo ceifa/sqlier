@@ -52,11 +52,13 @@ function db:initialize(options)
         self.Dataflow:degreeOfParallelism(1)
     end
 
+    self.MaxRetries = options.maxRetries or 3
     self.Connection:connect()
 end
 
 function db:validateSchema(schema)
     schema.NormalizedColumnsCache = {}
+    schema.ForeignKeysCache = {}
 
     for key in pairs(schema.Columns) do
         schema.NormalizedColumnsCache[string.lower(key)] = true
@@ -80,14 +82,16 @@ function db:validateSchema(schema)
 
         query = query .. type
 
-        if name == schema.Identity then
-            query = query .. " PRIMARY KEY"
+        if schema.Identity and isstring(schema.Identity) then
+            if schema.Identity == name then
+                query = query .. " PRIMARY KEY"
+            end
         end
 
         if options.AutoIncrement then
             query = query .. " AUTO_INCREMENT"
         end
-
+        
         if type == sqlier.Type.Timestamp and name == "CreateTimestamp" then
             query = query .. " DEFAULT CURRENT_TIMESTAMP"
         elseif type == sqlier.Type.Timestamp and name == "UpdateTimestamp" then
@@ -97,6 +101,28 @@ function db:validateSchema(schema)
         end
 
         query = query .. ", "
+
+        if options.Relation then
+            local Table = options.Relation.Table
+            local Column = options.Relation.Column
+
+            if (!Column || !Table) then continue end
+
+            table.insert(schema.ForeignKeysCache, { Name = name, Table = Table, Column = Column })
+        end
+    end
+
+    if istable(schema.Identity) and #schema.Identity > 0 then
+        print("Primary Keys Cache", schema.Identity)
+        PrintTable(schema.Identity)
+        query = query .. "PRIMARY KEY (`" .. table.concat(schema.Identity, "`, `") .. "`), "
+    end
+
+    if #schema.ForeignKeysCache > 0 then
+        for _, foreignKey in ipairs(schema.ForeignKeysCache) do
+            query = query .. "FOREIGN KEY (`" .. foreignKey.Name .. "`) REFERENCES `" .. foreignKey.Table .. "`(`" .. foreignKey.Column .. "`)"
+             query = query .. ", "
+        end
     end
 
     query = query:sub(1, -3) .. ")"
@@ -132,9 +158,13 @@ function db:query(query, callback)
             end
         end
 
-        self:logError("Query Failed: " .. err .. "(" .. usedQuery .. ")")
+        if usedQuery then
+            self:logError("Query failed: " .. err .. "(" .. usedQuery .. ")")
+        else
+            self:logError(err)
+        end
 
-        if tries < 3 then
+        if tries < self.MaxRetries then
             tries = tries + 1
             q:start()
         end
