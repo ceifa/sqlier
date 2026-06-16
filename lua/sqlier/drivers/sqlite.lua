@@ -16,6 +16,115 @@ local function filterQuery(table, filter)
     return query
 end
 
+-- Pure SQL builders, shared between the direct methods and transactions.
+local function buildSet(schema, object, separator)
+    local clause = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            clause = clause .. "`" .. key .. "` = " .. sql.SQLStr(value) .. separator
+        end
+    end
+
+    return clause:sub(1, -(#separator + 1))
+end
+
+local function buildWhere(schema, filter)
+    local clause = ""
+
+    for key, value in pairs(filter) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            clause = clause .. "`" .. key .. "` = " .. sql.SQLStr(value) .. " AND "
+        end
+    end
+
+    return clause:sub(1, -6)
+end
+
+local function buildUpdate(schema, object)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = " .. sql.SQLStr(value)
+            else
+                keyValues = keyValues .. "`" .. key .. "`" .. " = " .. sql.SQLStr(value) .. ", "
+            end
+        end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
+    end
+
+    return string.format("UPDATE `%s` SET %s WHERE %s", schema.Table, keyValues, where)
+end
+
+local function buildArithmetic(schema, object, operator)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = " .. sql.SQLStr(value)
+            elseif isnumber(value) then
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` " .. operator .. " " .. value .. ", "
+            end
+        end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
+    end
+
+    return string.format("UPDATE `%s` SET %s WHERE %s", schema.Table, keyValues, where)
+end
+
+local function buildUpdateWhere(schema, setValues, whereFilter)
+    return string.format("UPDATE `%s` SET %s WHERE %s",
+        schema.Table, buildSet(schema, setValues, ", "), buildWhere(schema, whereFilter))
+end
+
+local function buildDelete(schema, identity)
+    return string.format("DELETE FROM `%s` WHERE `%s` = %s", schema.Table, schema.Identity, sql.SQLStr(identity))
+end
+
+local function buildInsert(schema, object)
+    local keys, values = "", ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            keys = keys .. "`" .. key .. "`" .. ", "
+            values = values .. sql.SQLStr(value) .. ", "
+        end
+    end
+
+    keys = keys:sub(1, -3)
+    values = values:sub(1, -3)
+
+    return string.format("INSERT INTO `%s`(%s) VALUES(%s)", schema.Table, keys, values)
+end
+
+-- Builds the SQL for one queued transaction operation (see sqlier.transaction).
+local function buildStatement(op)
+    if op.kind == "insert" then
+        return buildInsert(op.model, op.object)
+    elseif op.kind == "update" then
+        return buildUpdate(op.model, op.object)
+    elseif op.kind == "delete" then
+        return buildDelete(op.model, op.identity)
+    elseif op.kind == "increment" then
+        return buildArithmetic(op.model, op.object, "+")
+    elseif op.kind == "decrement" then
+        return buildArithmetic(op.model, op.object, "-")
+    end
+
+    error("Unknown transaction operation '" .. tostring(op.kind) .. "'")
+end
+
 function db:initialize()
 end
 
@@ -104,51 +213,24 @@ function db:find(schema, filter, callback)
 end
 
 function db:update(schema, object, callback)
-    local where
-    local keyValues = ""
-
-    for key, value in pairs(object) do
-        if schema.NormalizedColumnsCache[string.lower(key)] then
-            if key == schema.Identity then
-                where = "`" .. key .. "` = " .. sql.SQLStr(value)
-            else
-                keyValues = keyValues .. "`" .. key .. "`" .. " = " .. sql.SQLStr(value) .. ", "
-            end
-        end
-    end
-
-    if #keyValues > 0 then
-        keyValues = keyValues:sub(1, -3)
-    end
-
-    local query = "UPDATE `%s` SET %s WHERE %s"
-    self:query(string.format(query, schema.Table, keyValues, where))
+    self:query(buildUpdate(schema, object))
 
     if isfunction(callback) then
         callback()
     end
 end
 
+-- Conditional update returning the number of affected rows.
+function db:updateWhere(schema, setValues, whereFilter, callback)
+    self:query(buildUpdateWhere(schema, setValues, whereFilter))
+
+    if isfunction(callback) then
+        callback(tonumber(sql.QueryValue("SELECT changes()")) or 0)
+    end
+end
+
 function db:increment(schema, object, callback)
-    local where
-    local keyValues = ""
-
-    for key, value in pairs(object) do
-        if schema.NormalizedColumnsCache[string.lower(key)] then
-            if key == schema.Identity then
-                where = "`" .. key .. "` = " .. sql.SQLStr(value)
-            elseif isnumber(value) then
-                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ", "
-            end
-        end
-    end
-
-    if #keyValues > 0 then
-        keyValues = keyValues:sub(1, -3)
-    end
-
-    local query = "UPDATE `%s` SET %s WHERE %s"
-    self:query(string.format(query, schema.Table, keyValues, where))
+    self:query(buildArithmetic(schema, object, "+"))
 
     if isfunction(callback) then
         callback()
@@ -156,25 +238,7 @@ function db:increment(schema, object, callback)
 end
 
 function db:decrement(schema, object, callback)
-    local where
-    local keyValues = ""
-
-    for key, value in pairs(object) do
-        if schema.NormalizedColumnsCache[string.lower(key)] then
-            if key == schema.Identity then
-                where = "`" .. key .. "` = " .. sql.SQLStr(value)
-            elseif isnumber(value) then
-                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ", "
-            end
-        end
-    end
-
-    if #keyValues > 0 then
-        keyValues = keyValues:sub(1, -3)
-    end
-
-    local query = "UPDATE `%s` SET %s WHERE %s"
-    self:query(string.format(query, schema.Table, keyValues, where))
+    self:query(buildArithmetic(schema, object, "-"))
 
     if isfunction(callback) then
         callback()
@@ -182,8 +246,7 @@ function db:decrement(schema, object, callback)
 end
 
 function db:delete(schema, identity, callback)
-    local query = "DELETE FROM `%s` WHERE `%s` = %s"
-    self:query(string.format(query, schema.Table, schema.Identity, sql.SQLStr(identity)))
+    self:query(buildDelete(schema, identity))
 
     if isfunction(callback) then
         callback(identity)
@@ -191,23 +254,49 @@ function db:delete(schema, identity, callback)
 end
 
 function db:insert(schema, object, callback)
-    local keys, values = "", ""
-
-    for key, value in pairs(object) do
-        if schema.NormalizedColumnsCache[string.lower(key)] then
-            keys = keys .. "`" .. key .. "`" .. ", "
-            values = values .. sql.SQLStr(value) .. ", "
-        end
-    end
-
-    keys = keys:sub(1, -3)
-    values = values:sub(1, -3)
-
-    local query = "INSERT INTO `%s`(%s) VALUES(%s)"
-    self:query(string.format(query, schema.Table, keys, values))
+    self:query(buildInsert(schema, object))
 
     if isfunction(callback) then
         callback(sql.QueryValue("SELECT last_insert_rowid()"))
+    end
+end
+
+-- Runs queued operations atomically (all-or-nothing).
+-- callback(success, results) where results[i] holds the per-statement
+-- data / affectedRows / lastInsert. On any error the whole batch rolls back.
+function db:transaction(operations, callback)
+    sql.Query("BEGIN")
+
+    local results = {}
+    local failure
+
+    for index, op in ipairs(operations) do
+        local result = sql.Query(buildStatement(op))
+
+        if result == false then
+            failure = sql.LastError()
+            break
+        end
+
+        local entry = { data = result }
+
+        -- Only fetch the metadata each operation can actually produce.
+        if op.kind == "insert" then
+            entry.lastInsert = tonumber(sql.QueryValue("SELECT last_insert_rowid()"))
+        else
+            entry.affectedRows = tonumber(sql.QueryValue("SELECT changes()"))
+        end
+
+        results[index] = entry
+    end
+
+    if failure then
+        sql.Query("ROLLBACK")
+        self:logError("Transaction failed (rolled back): " .. tostring(failure))
+        if isfunction(callback) then callback(false, failure) end
+    else
+        sql.Query("COMMIT")
+        if isfunction(callback) then callback(true, results) end
     end
 end
 

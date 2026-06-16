@@ -31,3 +31,23 @@ function sqlier.InstanceBase:deleteAsync()
         self:delete(resolve)
     end)
 end
+
+function sqlier.ModelBase:updateWhereAsync(setValues, whereFilter)
+    return util.Promise(function(resolve, reject)
+        self:updateWhere(setValues, whereFilter, resolve)
+    end)
+end
+
+-- Resolves with the per-statement results on commit, rejects with the error on
+-- rollback.
+function sqlier.transactionAsync(buildFn)
+    return util.Promise(function(resolve, reject)
+        sqlier.transaction(buildFn, function(success, results)
+            if success then
+                resolve(results)
+            else
+                reject(results)
+            end
+        end)
+    end)
+end
