@@ -31,6 +31,115 @@ local function filterQuery(connection, table, filter)
     return query
 end
 
+-- Pure SQL builders, shared between the direct (Dataflow) methods and transactions.
+local function buildSet(connection, schema, object, separator)
+    local clause = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            clause = clause .. "`" .. key .. "` = '" .. escape(connection, value) .. "'" .. separator
+        end
+    end
+
+    return clause:sub(1, -(#separator + 1))
+end
+
+local function buildWhere(connection, schema, filter)
+    local clause = ""
+
+    for key, value in pairs(filter) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            clause = clause .. "`" .. key .. "` = '" .. escape(connection, value) .. "' AND "
+        end
+    end
+
+    return clause:sub(1, -6)
+end
+
+local function buildUpdate(connection, schema, object)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = '" .. escape(connection, value) .. "'"
+            else
+                keyValues = keyValues .. "`" .. key .. "`" .. " = '" .. escape(connection, value) .. "'" .. ", "
+            end
+        end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
+    end
+
+    return string.format("UPDATE `%s` SET %s WHERE %s", schema.Table, keyValues, where)
+end
+
+local function buildArithmetic(connection, schema, object, operator)
+    local where
+    local keyValues = ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            if key == schema.Identity then
+                where = "`" .. key .. "` = '" .. escape(connection, value) .. "'"
+            elseif isnumber(value) then
+                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` " .. operator .. " " .. value .. ", "
+            end
+        end
+    end
+
+    if #keyValues > 0 then
+        keyValues = keyValues:sub(1, -3)
+    end
+
+    return string.format("UPDATE `%s` SET %s WHERE %s", schema.Table, keyValues, where)
+end
+
+local function buildUpdateWhere(connection, schema, setValues, whereFilter)
+    return string.format("UPDATE `%s` SET %s WHERE %s",
+        schema.Table, buildSet(connection, schema, setValues, ", "), buildWhere(connection, schema, whereFilter))
+end
+
+local function buildDelete(connection, schema, identity)
+    return string.format("DELETE FROM `%s` WHERE `%s` = '%s'", schema.Table, schema.Identity, escape(connection, identity))
+end
+
+local function buildInsert(connection, schema, object)
+    local keys, values = "", ""
+
+    for key, value in pairs(object) do
+        if schema.NormalizedColumnsCache[string.lower(key)] then
+            keys = keys .. "`" .. key .. "`" .. ", "
+            values = values .. "'" .. escape(connection, value) .. "'" .. ", "
+        end
+    end
+
+    keys = keys:sub(1, -3)
+    values = values:sub(1, -3)
+
+    return string.format("INSERT INTO `%s`(%s) VALUES(%s)", schema.Table, keys, values)
+end
+
+-- Builds the SQL for one queued transaction operation (see sqlier.transaction).
+local function buildStatement(connection, op)
+    if op.kind == "insert" then
+        return buildInsert(connection, op.model, op.object)
+    elseif op.kind == "update" then
+        return buildUpdate(connection, op.model, op.object)
+    elseif op.kind == "delete" then
+        return buildDelete(connection, op.model, op.identity)
+    elseif op.kind == "increment" then
+        return buildArithmetic(connection, op.model, op.object, "+")
+    elseif op.kind == "decrement" then
+        return buildArithmetic(connection, op.model, op.object, "-")
+    end
+
+    error("Unknown transaction operation '" .. tostring(op.kind) .. "'")
+end
+
 function db:initialize(options)
     self.Connection = mysqloo.connect(options.address, options.user, options.password, options.database, options.port)
 
@@ -112,7 +221,9 @@ function db:query(query, callback)
 
     q.onSuccess = function(s, data)
         if callback then
-            callback(data)
+            -- Pass the query object as the second argument so callers can read
+            -- s:lastInsert() / s:affectedRows() (used by insert and updateWhere).
+            callback(data, s)
         end
     end
 
@@ -165,51 +276,25 @@ function db:find(schema, filter, callback)
 end
 
 function db:update(schema, object, callback)
-    local where
-    local keyValues = ""
-
-    for key, value in pairs(object) do
-        if schema.NormalizedColumnsCache[string.lower(key)] then
-            if key == schema.Identity then
-                where = "`" .. key .. "` = '" .. escape(self.Connection, value) .. "'"
-            else
-                keyValues = keyValues .. "`" .. key .. "`" .. " = '" .. escape(self.Connection, value) .. "'" .. ", "
-            end
-        end
-    end
-
-    if #keyValues > 0 then
-        keyValues = keyValues:sub(1, -3)
-    end
-
-    local query = "UPDATE `%s` SET %s WHERE %s"
-    self.Dataflow:enqueue(string.format(query, schema.Table, keyValues, where))
+    self.Dataflow:enqueue(buildUpdate(self.Connection, schema, object))
 
     if isfunction(callback) then
         callback()
     end
 end
 
-function db:increment(schema, object, callback)
-    local where
-    local keyValues = ""
-
-    for key, value in pairs(object) do
-        if schema.NormalizedColumnsCache[string.lower(key)] then
-            if key == schema.Identity then
-                where = "`" .. key .. "` = '" .. escape(self.Connection, value) .. "'"
-            elseif isnumber(value) then
-                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` + " .. value .. ", "
-            end
+-- Conditional update returning the number of affected rows, e.g. an atomic claim
+-- like "set buyer where the listing is still unsold".
+function db:updateWhere(schema, setValues, whereFilter, callback)
+    self.Dataflow:enqueue(buildUpdateWhere(self.Connection, schema, setValues, whereFilter), function(_, q)
+        if isfunction(callback) then
+            callback(q and q:affectedRows() or 0)
         end
-    end
+    end)
+end
 
-    if #keyValues > 0 then
-        keyValues = keyValues:sub(1, -3)
-    end
-
-    local query = "UPDATE `%s` SET %s WHERE %s"
-    self.Dataflow:enqueue(string.format(query, schema.Table, keyValues, where))
+function db:increment(schema, object, callback)
+    self.Dataflow:enqueue(buildArithmetic(self.Connection, schema, object, "+"))
 
     if isfunction(callback) then
         callback()
@@ -217,59 +302,70 @@ function db:increment(schema, object, callback)
 end
 
 function db:decrement(schema, object, callback)
-    local where
-    local keyValues = ""
-
-    for key, value in pairs(object) do
-        if schema.NormalizedColumnsCache[string.lower(key)] then
-            if key == schema.Identity then
-                where = "`" .. key .. "` = '" .. escape(self.Connection, value) .. "'"
-            elseif isnumber(value) then
-                keyValues = keyValues .. "`" .. key .. "`" .. " = `" .. key .. "` - " .. value .. ", "
-            end
-        end
-    end
-
-    if #keyValues > 0 then
-        keyValues = keyValues:sub(1, -3)
-    end
-
-    local query = "UPDATE `%s` SET %s WHERE %s"
-    self.Dataflow:enqueue(string.format(query, schema.Table, keyValues, where))
+    self.Dataflow:enqueue(buildArithmetic(self.Connection, schema, object, "-"))
 
     if isfunction(callback) then
         callback()
     end
 end
 
-function db:delete(schema, identity)
-    local query = "DELETE FROM `%s` WHERE `%s` = '%s'"
-    self.Dataflow:enqueue(string.format(query, schema.Table, schema.Identity, escape(self.Connection, identity)))
+function db:delete(schema, identity, callback)
+    self.Dataflow:enqueue(buildDelete(self.Connection, schema, identity))
 
     if isfunction(callback) then
         callback(identity)
     end
 end
 
-function db:insert(schema, object)
-    local keys, values = "", ""
-
-    for key, value in pairs(object) do
-        if schema.NormalizedColumnsCache[string.lower(key)] then
-            keys = keys .. "`" .. key .. "`" .. ", "
-            values = values .. "'" .. escape(self.Connection, value) .. "'" .. ", "
+function db:insert(schema, object, callback)
+    self.Dataflow:enqueue(buildInsert(self.Connection, schema, object), function(_, q)
+        if isfunction(callback) then
+            callback(q and q:lastInsert())
         end
+    end)
+end
+
+-- Runs queued operations atomically (all-or-nothing) on a single connection.
+-- callback(success, results) where results[i] holds the per-statement
+-- data / affectedRows / lastInsert. On any error the whole batch rolls back.
+function db:transaction(operations, callback)
+    if self.Connection:status() ~= mysqloo.DATABASE_CONNECTED then
+        self:logError("Cannot start a transaction while disconnected.")
+        if isfunction(callback) then callback(false, "not connected") end
+        return
     end
 
-    keys = keys:sub(1, -3)
-    values = values:sub(1, -3)
+    local transaction = self.Connection:createTransaction()
+    local queries = {}
 
-    local query = "INSERT INTO `%s`(%s) VALUES(%s)"
-    local q = self.Dataflow:enqueue(string.format(query, schema.Table, keys, values))
-
-    if isfunction(callback) then
-        callback(q:lastInsert())
+    for index, op in ipairs(operations) do
+        local query = self.Connection:query(buildStatement(self.Connection, op))
+        queries[index] = query
+        transaction:addQuery(query)
     end
+
+    transaction.onSuccess = function()
+        if not isfunction(callback) then return end
+
+        local results = {}
+
+        for index, query in ipairs(queries) do
+            results[index] = {
+                data = query:getData(),
+                affectedRows = query:affectedRows(),
+                lastInsert = query:lastInsert()
+            }
+        end
+
+        callback(true, results)
+    end
+
+    transaction.onError = function(_, err)
+        self:logError("Transaction failed (rolled back): " .. tostring(err))
+        if isfunction(callback) then callback(false, err) end
+    end
+
+    transaction:start()
 end
 
 return db

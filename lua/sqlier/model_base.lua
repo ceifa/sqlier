@@ -82,6 +82,14 @@ function model_base:database()
     return sqlier.Database[self.Database]
 end
 
+-- Conditional update: sets `setValues` on every row matching `whereFilter` and
+-- reports how many rows were affected. Useful for atomic claims, e.g.
+--   Listing:updateWhere({ BuyerSid64 = buyer }, { Id = id, BuyerSid64 = "" }, fn)
+-- where the callback receives 1 only for the caller that won the race.
+function model_base:updateWhere(setValues, whereFilter, callback)
+    self:database():updateWhere(self, setValues, whereFilter, callback)
+end
+
 function model_base:__validate()
     self:database():validateSchema(self)
 end
