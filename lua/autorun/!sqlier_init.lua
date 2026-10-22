@@ -96,6 +96,12 @@ function Model(props)
     return model
 end
 
+-- Drivers backed by a binary module; when the module is not installed the
+-- driver can't load, so its databases are skipped instead of erroring
+local driverModules = {
+    mysqloo = "mysqloo"
+}
+
 do
     if not file.IsDir("sqlier", "DATA") then
         file.CreateDir("sqlier")
@@ -108,8 +114,22 @@ do
         Logger:log("LOADER", "Loading database " .. database)
 
         local databaseConfigJson = file.Read("sqlier/database/" .. name)
-        local databaseConfig = util.JSONToTable(databaseConfigJson)
+        local databaseConfig = databaseConfigJson and util.JSONToTable(databaseConfigJson)
 
-        Initialize(database, databaseConfig.driver, databaseConfig)
+        -- A broken database config (e.g. a stale mysql.json left on the server
+        -- whose mysqloo module is gone) must not abort the loader, otherwise
+        -- every database after it is never registered and all models fail
+        if not databaseConfig or not databaseConfig.driver then
+            Logger:log("LOADER", "Invalid config for database " .. database .. ", skipping", Logger.Error)
+        elseif driverModules[databaseConfig.driver] and not util.IsBinaryModuleInstalled(driverModules[databaseConfig.driver]) then
+            Logger:log("LOADER", "Skipping database " .. database .. ": module '" .. driverModules[databaseConfig.driver] .. "' is not installed")
+        else
+            local ok, err = pcall(Initialize, database, databaseConfig.driver, databaseConfig)
+
+            if not ok then
+                Database[database] = nil
+                Logger:log("LOADER", "Failed to load database " .. database .. ": " .. tostring(err), Logger.Error)
+            end
+        end
     end
 end
